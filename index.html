@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Planning Poker</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 2rem; }
+    #votes { margin-top: 2rem; }
+    .vote { margin: 0.5rem; display: inline-block; padding: 0.5rem 1rem; border: 1px solid #ccc; border-radius: 8px; }
+  </style>
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+</head>
+<body>
+  <h1>Planning Poker</h1>
+
+  <div>
+    <button id="createBtn">Criar Sala</button>
+    <input type="text" id="joinId" placeholder="ID da sala" />
+    <button id="joinBtn">Entrar</button>
+  </div>
+
+  <div id="connectionArea" style="display:none;">
+    <p>Seu nome: <input type="text" id="name" /></p>
+    <p>Vote: 
+      <button class="voteBtn" data-value="1">1</button>
+      <button class="voteBtn" data-value="2">2</button>
+      <button class="voteBtn" data-value="3">3</button>
+      <button class="voteBtn" data-value="5">5</button>
+      <button class="voteBtn" data-value="8">8</button>
+      <button class="voteBtn" data-value="13">13</button>
+      <button class="voteBtn" data-value="21">21</button>
+      <button class="voteBtn" data-value="34">34</button>
+      <button class="voteBtn" data-value="55">55</button>
+      <button class="voteBtn" data-value="89">89</button>
+      <button class="voteBtn" data-value="sei la">sei la</button>
+      <button class="voteBtn" data-value="cafezin">cafezin</button>
+    </p>
+    <div id="votes"></div>
+  </div>
+
+  <script>
+    let peer, conn;
+    const votesEl = document.getElementById('votes');
+    const connectionArea = document.getElementById('connectionArea');
+
+    const peerOptions = {
+      host: 'https://planin-back.onrender.com/', 
+      path: '/peerjs',
+      secure: true,
+      port: 443
+    };
+
+    document.getElementById('createBtn').onclick = () => {
+      peer = new Peer(undefined, peerOptions);
+      peer.on('open', id => {
+        alert('ID da sala: ' + id);
+        connectionArea.style.display = 'block';
+      });
+
+      peer.on('connection', c => {
+        c.on('data', d => {
+          showVote(d.name, d.vote);
+        });
+      });
+    };
+
+    document.getElementById('joinBtn').onclick = () => {
+      const roomId = document.getElementById('joinId').value.trim();
+      if (!roomId) return alert('Insira um ID de sala');
+      peer = new Peer(undefined, peerOptions);
+      peer.on('open', id => {
+        conn = peer.connect(roomId);
+        conn.on('open', () => {
+          connectionArea.style.display = 'block';
+        });
+      });
+    };
+
+    document.querySelectorAll('.voteBtn').forEach(btn => {
+      btn.onclick = () => {
+        const name = document.getElementById('name').value || 'Anônimo';
+        const vote = btn.dataset.value;
+        showVote(name, vote);
+        if (conn && conn.open) {
+          conn.send({ name, vote });
+        }
+      };
+    });
+
+    function showVote(name, vote) {
+      const p = document.createElement('div');
+      p.className = 'vote';
+      p.textContent = `${name}: ${vote}`;
+      votesEl.appendChild(p);
+    }
+  </script>
+</body>
+</html>
