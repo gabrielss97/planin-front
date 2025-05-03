@@ -350,9 +350,6 @@ function createRoom() {
   try {
     const currentOptions = useCustomServer ? peerOptions : fallbackOptions;
     
-    // Adicionar um log para debug em produção
-    console.log("Criando peer com opções:", JSON.stringify(currentOptions));
-    
     peer = new Peer(undefined, currentOptions);
     
     peer.on('open', id => {
@@ -467,7 +464,6 @@ function createRoom() {
     
     // Tentar fallback automático
     if (useCustomServer) {
-      console.log("Tentando fallback automático...");
       useCustomServer = false;
       setTimeout(() => createRoom(), 500);
     } else {
