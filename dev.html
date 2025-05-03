@@ -9,7 +9,7 @@
   <meta name="author" content="Gabriel Salvador">
   <meta name="robots" content="noindex, nofollow">
   
-  <!-- SEM CSP para desenvolvimento -->
+  <!-- SEM CSP estrito para desenvolvimento - permite todas as conexões -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <title>Planin 2000 (DESENVOLVIMENTO)</title>
   <link rel="stylesheet" href="styles.css">
@@ -30,6 +30,14 @@
       font-size: 12px;
       z-index: 9999;
       opacity: 0.8;
+    }
+    
+    /* Carregando fontes diretamente para evitar problemas com Google Fonts */
+    @font-face {
+      font-family: 'VT323';
+      font-style: normal;
+      font-weight: 400;
+      src: local('VT323'), url('https://fonts.gstatic.com/s/vt323/v12/pxiKyp0ihIEF2isQFJXUdVNF.woff2') format('woff2');
     }
   </style>
 </head>

@@ -55,7 +55,7 @@ const peerOptions = isDev
       port: 3000,
       path: '/peerjs',
       secure: false,
-      debug: 0,
+      debug: 1,
       key: 'peerjs',
       config: {
         iceServers: [
@@ -68,7 +68,7 @@ const peerOptions = isDev
       host: 'planin-back.onrender.com',
       path: '/peerjs',
       secure: true,
-      debug: 0,
+      debug: 1,
       key: 'peerjs',
       config: {
         iceServers: [
@@ -346,113 +346,135 @@ function createRoom() {
     peer.destroy();
   }
   
-  const currentOptions = useCustomServer ? peerOptions : fallbackOptions;
-  peer = new Peer(undefined, currentOptions);
-  
-  peer.on('open', id => {
-    currentRoomId = id;
-    roomIdDisplay.textContent = id;
-    setupCreatorInterface();
-  });
-
-  peer.on('connection', incoming => {
-    connections.push(incoming);
-
-    incoming.on('open', () => {
-      // Enviar a lista atual de usuários para o novo participante
-      sendUsersList(incoming);
-      
-      // Enviar o histórico de votos atual
-      sendVotesHistory(incoming);
+  // Tenta usar o servidor personalizado primeiro
+  try {
+    const currentOptions = useCustomServer ? peerOptions : fallbackOptions;
+    
+    // Adicionar um log para debug em produção
+    console.log("Criando peer com opções:", JSON.stringify(currentOptions));
+    
+    peer = new Peer(undefined, currentOptions);
+    
+    peer.on('open', id => {
+      currentRoomId = id;
+      roomIdDisplay.textContent = id;
+      setupCreatorInterface();
     });
 
-    incoming.on('data', data => {
-      // Processar dados recebidos com base no tipo
-      if (data.type === 'vote') {
-        showVote(data.name, data.vote);
-        // Retransmitir para outros clientes
-        connections.forEach(c => {
-          if (c !== incoming && c.open) c.send(data);
-        });
-      } 
-      else if (data.type === 'user_joined') {
-        // Adicionar o novo usuário à lista
-        addUserToList(data.name);
+    peer.on('connection', incoming => {
+      connections.push(incoming);
+
+      incoming.on('open', () => {
+        // Enviar a lista atual de usuários para o novo participante
+        sendUsersList(incoming);
         
-        // Notificar outros usuários sobre o novo participante
-        const userJoinedData = {
-          type: 'user_joined',
-          name: data.name
-        };
-        
-        connections.forEach(c => {
-          if (c !== incoming && c.open) c.send(userJoinedData);
-        });
-      }
-      else if (data.type === 'reset_votes') {
-        // Resetar todas as estimativas para zero
-        connectedUsers.forEach(user => {
-          showVote(user, "0");
-        });
-        
-        // Retransmitir para outros clientes
-        connections.forEach(c => {
-          if (c !== incoming && c.open) c.send(data);
-        });
-      }
-      else if (data.type === 'values_visibility') {
-        // Atualizar visibilidade dos valores
-        valuesHidden = data.hidden;
-        
-        // Atualizar o texto do botão
-        toggleBtnText.textContent = valuesHidden ? 'Mostrar' : 'Esconder';
-        
-        const voteValues = document.querySelectorAll('.vote-value');
-        
-        // Aplica a animação a todos os elementos
-        voteValues.forEach(voteValue => {
-          // Adiciona a classe de animação
-          voteValue.classList.add('flipping');
+        // Enviar o histórico de votos atual
+        sendVotesHistory(incoming);
+      });
+
+      incoming.on('data', data => {
+        // Processar dados recebidos com base no tipo
+        if (data.type === 'vote') {
+          showVote(data.name, data.vote);
+          // Retransmitir para outros clientes
+          connections.forEach(c => {
+            if (c !== incoming && c.open) c.send(data);
+          });
+        } 
+        else if (data.type === 'user_joined') {
+          // Adicionar o novo usuário à lista
+          addUserToList(data.name);
           
-          // No meio da animação (quando a carta está de lado), muda a visibilidade
-          setTimeout(() => {
-            if (valuesHidden) {
-              voteValue.closest('.vote').classList.add('hidden-value');
-            } else {
-              voteValue.closest('.vote').classList.remove('hidden-value');
-            }
-          }, 250); // Metade do tempo da animação (0.5s = 500ms)
+          // Notificar outros usuários sobre o novo participante
+          const userJoinedData = {
+            type: 'user_joined',
+            name: data.name
+          };
           
-          // Remove a classe de animação após a conclusão
-          setTimeout(() => {
-            voteValue.classList.remove('flipping');
-          }, 500);
-        });
-        
-        // Retransmitir para outros clientes
-        connections.forEach(c => {
-          if (c !== incoming && c.open) c.send(data);
-        });
-      }
-      else if (typeof data === 'object' && data.name && data.vote) {
-        // Para compatibilidade com versões anteriores
-        showVote(data.name, data.vote);
-        connections.forEach(c => {
-          if (c !== incoming && c.open) c.send(data);
-        });
-      }
+          connections.forEach(c => {
+            if (c !== incoming && c.open) c.send(userJoinedData);
+          });
+        }
+        else if (data.type === 'reset_votes') {
+          // Resetar todas as estimativas para zero
+          connectedUsers.forEach(user => {
+            showVote(user, "0");
+          });
+          
+          // Retransmitir para outros clientes
+          connections.forEach(c => {
+            if (c !== incoming && c.open) c.send(data);
+          });
+        }
+        else if (data.type === 'values_visibility') {
+          // Atualizar visibilidade dos valores
+          valuesHidden = data.hidden;
+          
+          // Atualizar o texto do botão
+          toggleBtnText.textContent = valuesHidden ? 'Mostrar' : 'Esconder';
+          
+          const voteValues = document.querySelectorAll('.vote-value');
+          
+          // Aplica a animação a todos os elementos
+          voteValues.forEach(voteValue => {
+            // Adiciona a classe de animação
+            voteValue.classList.add('flipping');
+            
+            // No meio da animação (quando a carta está de lado), muda a visibilidade
+            setTimeout(() => {
+              if (valuesHidden) {
+                voteValue.closest('.vote').classList.add('hidden-value');
+              } else {
+                voteValue.closest('.vote').classList.remove('hidden-value');
+              }
+            }, 250); // Metade do tempo da animação (0.5s = 500ms)
+            
+            // Remove a classe de animação após a conclusão
+            setTimeout(() => {
+              voteValue.classList.remove('flipping');
+            }, 500);
+          });
+          
+          // Retransmitir para outros clientes
+          connections.forEach(c => {
+            if (c !== incoming && c.open) c.send(data);
+          });
+        }
+        else if (typeof data === 'object' && data.name && data.vote) {
+          // Para compatibilidade com versões anteriores
+          showVote(data.name, data.vote);
+          connections.forEach(c => {
+            if (c !== incoming && c.open) c.send(data);
+          });
+        }
+      });
+      
+      incoming.on('close', () => {
+        // Remover a conexão da lista
+        const index = connections.indexOf(incoming);
+        if (index !== -1) {
+          connections.splice(index, 1);
+        }
+      });
     });
     
-    incoming.on('close', () => {
-      // Remover a conexão da lista
-      const index = connections.indexOf(incoming);
-      if (index !== -1) {
-        connections.splice(index, 1);
-      }
+    peer.on('error', err => {
+      console.error("Erro de peer:", err.type, err.message);
+      handleConnectionError(err, true);
     });
-  });
-  
-  peer.on('error', err => handleConnectionError(err, true));
+  } catch (err) {
+    console.error("Erro ao criar peer:", err);
+    
+    // Tentar fallback automático
+    if (useCustomServer) {
+      console.log("Tentando fallback automático...");
+      useCustomServer = false;
+      setTimeout(() => createRoom(), 500);
+    } else {
+      displayErrorMessage(`Erro ao conectar: ${err.message || 'Desconhecido'}`);
+      resetInterface();
+    }
+  }
 }
 
 function joinRoom(roomId) {
