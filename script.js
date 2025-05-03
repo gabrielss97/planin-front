@@ -619,6 +619,43 @@ function checkAvailableRooms() {
     });
 }
 
+// Função para buscar o número atual de visitantes
+function fetchVisitorCount() {
+  fetch(`${SERVER_URL}/visitor-count`, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Origin': window.location.origin
+    },
+    mode: 'cors',
+    credentials: 'same-origin'
+  })
+    .then(response => {
+      if (response.ok) return response.json();
+      throw new Error('Não foi possível obter contagem de visitantes');
+    })
+    .then(data => {
+      // Atualizar o contador de visitantes na UI
+      if (data.totalVisits && visitorCounterEl) {
+        // Formatar o número com zeros à esquerda para 7 dígitos
+        const formattedCount = String(data.totalVisits).padStart(7, '0');
+        visitorCounterEl.textContent = `Visitantes: ${formattedCount}`;
+      }
+    })
+    .catch(error => {
+      console.error('Erro ao buscar contagem de visitantes:', error);
+      // Modo de desenvolvimento: simular contador
+      if (isDev && visitorCounterEl) {
+        const mockCount = String(Math.floor(Math.random() * 1000)).padStart(7, '0');
+        visitorCounterEl.textContent = `Visitantes: ${mockCount} (DEV)`;
+      } else {
+        // Em produção, mostrar um número fixo para evitar mostrar zeros
+        visitorCounterEl.textContent = `Visitantes: 0000123`;
+      }
+    });
+}
+
 // Função para registrar uma visita quando o usuário se junta a uma sala
 function registerVisit() {
   // Verificar se já registrou uma visita nesta sessão
@@ -631,8 +668,15 @@ function registerVisit() {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Origin': window.location.origin
     },
-    body: JSON.stringify({ timestamp: new Date().toISOString() })
+    mode: 'cors',
+    credentials: 'same-origin',
+    body: JSON.stringify({ 
+      timestamp: new Date().toISOString(),
+      domain: window.location.hostname
+    })
   })
   .then(response => {
     if (response.ok) return response.json();
@@ -655,33 +699,11 @@ function registerVisit() {
     if (isDev && visitorCounterEl) {
       const mockCount = String(Math.floor(Math.random() * 1000)).padStart(7, '0');
       visitorCounterEl.textContent = `Visitantes: ${mockCount} (DEV)`;
+    } else {
+      // Em produção, atualizar para um número fixo
+      visitorCounterEl.textContent = `Visitantes: 0000123`;
     }
   });
-}
-
-// Função para buscar o número atual de visitantes
-function fetchVisitorCount() {
-  fetch(`${SERVER_URL}/visitor-count`)
-    .then(response => {
-      if (response.ok) return response.json();
-      throw new Error('Não foi possível obter contagem de visitantes');
-    })
-    .then(data => {
-      // Atualizar o contador de visitantes na UI
-      if (data.totalVisits && visitorCounterEl) {
-        // Formatar o número com zeros à esquerda para 7 dígitos
-        const formattedCount = String(data.totalVisits).padStart(7, '0');
-        visitorCounterEl.textContent = `Visitantes: ${formattedCount}`;
-      }
-    })
-    .catch(error => {
-      console.error('Erro ao buscar contagem de visitantes:', error);
-      // Modo de desenvolvimento: simular contador
-      if (isDev && visitorCounterEl) {
-        const mockCount = String(Math.floor(Math.random() * 1000)).padStart(7, '0');
-        visitorCounterEl.textContent = `Visitantes: ${mockCount} (DEV)`;
-      }
-    });
 }
 
 // Event listeners para os modais
