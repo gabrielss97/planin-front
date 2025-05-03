@@ -7,6 +7,7 @@ let connections = [];
 let useCustomServer = true; // Começa tentando usar o servidor customizado
 let connectedUsers = []; // Lista de usuários conectados
 let valuesHidden = true; // Por padrão, valores começam escondidos
+let visitorCounterEl = document.querySelector('.visitor-counter span');
 
 // Elementos da UI
 const votesEl = document.getElementById('votes');
@@ -598,6 +599,61 @@ function checkAvailableRooms() {
     });
 }
 
+// Função para registrar uma visita quando o usuário se junta a uma sala
+function registerVisit() {
+  // Verificar se já registrou uma visita nesta sessão
+  if (localStorage.getItem('visitRegistered')) {
+    return;
+  }
+  
+  // Fazer uma requisição para o servidor para registrar a visita
+  fetch(`${SERVER_URL}/register-visit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ timestamp: new Date().toISOString() })
+  })
+  .then(response => {
+    if (response.ok) return response.json();
+    throw new Error('Não foi possível registrar visita');
+  })
+  .then(data => {
+    // Atualizar o contador de visitantes na UI
+    if (data.totalVisits && visitorCounterEl) {
+      // Formatar o número com zeros à esquerda para 7 dígitos
+      const formattedCount = String(data.totalVisits).padStart(7, '0');
+      visitorCounterEl.textContent = `Visitantes: ${formattedCount}`;
+    }
+    
+    // Marcar que já registrou uma visita nesta sessão
+    localStorage.setItem('visitRegistered', 'true');
+  })
+  .catch(error => {
+    console.error('Erro ao registrar visita:', error);
+  });
+}
+
+// Função para buscar o número atual de visitantes
+function fetchVisitorCount() {
+  fetch(`${SERVER_URL}/visitor-count`)
+    .then(response => {
+      if (response.ok) return response.json();
+      throw new Error('Não foi possível obter contagem de visitantes');
+    })
+    .then(data => {
+      // Atualizar o contador de visitantes na UI
+      if (data.totalVisits && visitorCounterEl) {
+        // Formatar o número com zeros à esquerda para 7 dígitos
+        const formattedCount = String(data.totalVisits).padStart(7, '0');
+        visitorCounterEl.textContent = `Visitantes: ${formattedCount}`;
+      }
+    })
+    .catch(error => {
+      console.error('Erro ao buscar contagem de visitantes:', error);
+    });
+}
+
 // Event listeners para os modais
 cancelCreateBtn.addEventListener('click', () => hideModal(createNameModal));
 cancelJoinBtn.addEventListener('click', () => hideModal(joinNameModal));
@@ -612,6 +668,7 @@ confirmCreateBtn.addEventListener('click', () => {
   userName = name;
   hideModal(createNameModal);
   createRoom();
+  registerVisit(); // Registrar visita quando criar uma sala
 });
 
 confirmJoinBtn.addEventListener('click', () => {
@@ -623,6 +680,7 @@ confirmJoinBtn.addEventListener('click', () => {
   userName = name;
   hideModal(joinNameModal);
   joinRoom(roomIdToJoin);
+  registerVisit(); // Registrar visita quando entrar em uma sala
 });
 
 // Configurar o botão de copiar
@@ -713,3 +771,4 @@ function resetVotes() {
 // Inicialização
 resetInterface();
 checkServerStatus();
+fetchVisitorCount(); // Buscar a contagem atual de visitantes ao carregar a página
