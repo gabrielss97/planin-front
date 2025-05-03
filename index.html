@@ -3,44 +3,82 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Planin</title>
+  <title>Planin 2000</title>
   <link rel="stylesheet" href="styles.css">
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <script src="script.js" defer></script>
 </head>
 
 <body>
-  <h1>Planin</h1>
+  <div class="old-browser-notice">
+    <marquee scrollamount="5">⚠️ Este site funciona melhor com Internet Explorer 5.5 ou Netscape Navigator 4.7 ⚠️</marquee>
+  </div>
+
+  <h1>★彡 Planin 2000 彡★</h1>
 
   <div id="statusBar">
+    <img src="data:image/gif;base64,R0lGODlhEAAQAMQAAP///+7u7t3d3bu7u6qqqpmZmYiIiHd3d2ZmZlVVVURERDMzMyIiIhEREQARAAAAAP///wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH/C05FVFNDQVBFMi4wAwEAAAAh+QQFBwAQACwAAAAAEAAQAAAFdyAkQgGJJOWoQgIjBM8jkKsoPEzgyMFaCq4dTYzaIxCMIErT4XOGePDIFVyYAiiFR4GcLBakQQAIfkEBQcAEAAsAgAAAA4AEAAABWwgJEJOiGg5BYhpqGoIwwMx4mQaoAqGY4+dPC0EoxEkehDIdqEYPD0GUJgCAsyAMCAYEMJIBALiPBVMRVZsY6jWgDQbAspQRgQCCpfJwOLFDxCNBzWIBZKOhAgMBEOImQCOBEV/BAMFQQA7" width="16" height="16" alt="loading">
     <p id="serverStatus">Verificando servidor...</p>
   </div>
 
   <div id="roomControls">
     <div id="createRoomSection">
-      <button id="createBtn">Criar Sala</button>
+      <div class="window-title">Criar Nova Sala</div>
+      <button id="createBtn">
+        <img src="data:image/gif;base64,R0lGODlhDgAOAIAAAP///wAAACH5BAEAAAEALAAAAAAOAA4AAAIVjI+py+0Po5y02ouz3rz7D4biSIUFADs=" width="14" height="14" alt="icon">
+        Criar Sala
+      </button>
       <div id="roomIdSection" style="display:none;">
-        <p>ID da sala: <span id="roomIdDisplay"></span>
-          <button id="copyBtn" title="Copiar ID">📋</button>
-        </p>
+        <blink>ID da sala:</blink> <span id="roomIdDisplay"></span>
+        <button id="copyBtn" title="Copiar ID">📋</button>
       </div>
     </div>
     
     <div id="joinRoomSection">
-      <h3>Entrar em uma sala</h3>
+      <h3>Entrar em uma sala existente</h3>
       <input type="text" id="joinId" placeholder="Cole o ID da sala aqui" />
-      <button id="joinBtn">Entrar</button>
-      <button id="checkRoomsBtn">Verificar Salas Disponíveis</button>
+      <button id="joinBtn">
+        <img src="data:image/gif;base64,R0lGODlhDgAOAIAAAP///wAAACH5BAEAAAEALAAAAAAOAA4AAAIZjI+py+0Po5y02ouzFLz7D2lhSJXmiaZqUAAAOw==" width="14" height="14" alt="icon">
+        Entrar
+      </button>
+      <button id="checkRoomsBtn">
+        <img src="data:image/gif;base64,R0lGODlhDgAOAIAAAP///wAAACH5BAEAAAEALAAAAAAOAA4AAAIdjI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC0cFADs=" width="14" height="14" alt="icon">
+        Verificar Salas
+      </button>
     </div>
   </div>
 
   <div id="roomList" style="display:none;">
-    <h3>Salas Disponíveis</h3>
+    <div class="window-title">Salas Disponíveis</div>
+    <h3>Salas Online</h3>
     <ul id="availableRooms"></ul>
   </div>
 
   <div id="connectionArea" style="display:none;">
-    <p>Vote:
+    <div class="window-title">Sala de Votação</div>
+    
+    <!-- Novo painel para exibir usuários conectados -->
+    <div id="usersPanel">
+      <h3>Usuários Conectados</h3>
+      <div id="usersList"></div>
+    </div>
+    
+    <img src="data:image/gif;base64,R0lGODlhEAAQAPcAAAAAAAAAMwAAZgAAmQAAzAAA/wArAAArMwArZgArmQArzAAr/wBVAABVMwBVZgBVmQBVzABV/wCAAACAMwCAZgCAmQCAzACA/wCqAACqMwCqZgCqmQCqzACq/wDVAADVMwDVZgDVmQDVzADV/wD/AAD/MwD/ZgD/mQD/zAD//zMAADMAMzMAZjMAmTMAzDMA/zMrADMrMzMrZjMrmTMrzDMr/zNVADNVMzNVZjNVmTNVzDNV/zOAADOAMzOAZjOAmTOAzDOA/zOqADOqMzOqZjOqmTOqzDOq/zPVADPVMzPVZjPVmTPVzDPV/zP/ADP/MzP/ZjP/mTP/zDP//2YAAGYAM2YAZmYAmWYAzGYA/2YrAGYrM2YrZmYrmWYrzGYr/2ZVAGZVM2ZVZmZVmWZVzGZV/2aAAGaAM2aAZmaAmWaAzGaA/2aqAGaqM2aqZmaqmWaqzGaq/2bVAGbVM2bVZmbVmWbVzGbV/2b/AGb/M2b/Zmb/mWb/zGb//5kAAJkAM5kAZpkAmZkAzJkA/5krAJkrM5krZpkrmZkrzJkr/5lVAJlVM5lVZplVmZlVzJlV/5mAAJmAM5mAZpmAmZmAzJmA/5mqAJmqM5mqZpmqmZmqzJmq/5nVAJnVM5nVZpnVmZnVzJnV/5n/AJn/M5n/Zpn/mZn/zJn//8wAAMwAM8wAZswAmcwAzMwA/8wrAMwrM8wrZswrmcwrzMwr/8xVAMxVM8xVZsxVmcxVzMxV/8yAAMyAM8yAZsyAmcyAzMyA/8yqAMyqM8yqZsyqmcyqzMyq/8zVAMzVM8zVZszVmczVzMzV/8z/AMz/M8z/Zsz/mcz/zMz///8AAP8AM/8AZv8Amf8AzP8A//8rAP8rM/8rZv8rmf8rzP8r//9VAP9VM/9VZv9Vmf9VzP9V//+AAP+AM/+AZv+Amf+AzP+A//+qAP+qM/+qZv+qmf+qzP+q///VAP/VM//VZv/Vmf/VzP/V////AP//M///Zv//mf//zP///wAAAAAAAAAAAAAAACH5BAEAAPwALAAAAAAQABAAAAhkAPEJHEiwoEF+ogoqXIhQVCyHDksZJHXKoaiFDBW+mujQ4sGOAj2WEuWxoyiCDF1dJMVR1MiQH1OJJLXr40KGFU2hDKlx5sKXNBVenEn0I82G/Fb2NCqw48iLrwDYZLhTYcOAADs=" width="16" height="16" alt="icon">
+    <p>Vote:</p>
+    
+    <!-- Botões para mostrar/esconder valores -->
+    <div class="vote-controls">
+      <button id="toggleValuesBtn" class="control-btn">
+        <img src="data:image/gif;base64,R0lGODlhDgAOAIAAAP///wAAACH5BAEAAAEALAAAAAAOAA4AAAIdjI+py+0Po5y02ouz3rz7D4biSJbmiabqyrbuC0cFADs=" width="14" height="14" alt="icon">
+        <span id="toggleBtnText">Mostrar Valores</span>
+      </button>
+      <button id="resetVotesBtn" class="control-btn">
+        <img src="data:image/gif;base64,R0lGODlhDgAOAIAAAP///wAAACH5BAEAAAEALAAAAAAOAA4AAAIVjI+py+0Po5y02ouz3rz7D4biSIUFADs=" width="14" height="14" alt="icon">
+        Limpar Votos
+      </button>
+    </div>
+    
+    <div class="vote-buttons">
       <button class="voteBtn" data-value="1">1</button>
       <button class="voteBtn" data-value="2">2</button>
       <button class="voteBtn" data-value="3">3</button>
@@ -51,15 +89,16 @@
       <button class="voteBtn" data-value="34">34</button>
       <button class="voteBtn" data-value="55">55</button>
       <button class="voteBtn" data-value="89">89</button>
-      <button class="voteBtn" data-value="sei la">sei la</button>
-      <button class="voteBtn" data-value="cafezin">cafezin</button>
-    </p>
+      <button class="voteBtn" data-value="sei la">¯\_(ツ)_/¯</button>
+      <button class="voteBtn" data-value="cafezin">☕</button>
+    </div>
     <div id="votes"></div>
   </div>
 
   <!-- Modal para nome ao criar sala -->
   <div id="createNameModal" class="modal">
     <div class="modal-content">
+      <div class="window-title">Nova Sala</div>
       <h3>Informe seu nome</h3>
       <p>Digite seu nome antes de criar a sala:</p>
       <input type="text" id="createNameInput" placeholder="Seu nome" />
@@ -73,6 +112,7 @@
   <!-- Modal para nome ao entrar na sala -->
   <div id="joinNameModal" class="modal">
     <div class="modal-content">
+      <div class="window-title">Entrar na Sala</div>
       <h3>Informe seu nome</h3>
       <p>Digite seu nome antes de entrar na sala:</p>
       <input type="text" id="joinNameInput" placeholder="Seu nome" />
@@ -86,6 +126,8 @@
   <!-- Modal de notificação para erros -->
   <div id="notificationModal" class="modal notification-modal">
     <div class="modal-content">
+      <div class="window-title">Alerta do Sistema</div>
+      <img src="data:image/gif;base64,R0lGODlhEAAQAMQfAP////8AAP9mZv+Zmf/MzP+ZM/9mM/8zM/+ZZv9mZv8zZubm5v+ZZv8zZv8AAObm5v9mAMzMzP9zAP9mAP+ZAP9zM/+ZM/9zZubm5v/MZv/////MAAAAAAAAAAAAAAD/C05FVFNDQVBFMi4wAwEAAAAh+QQFAAAeACwAAAAAEAAQAAAFcOCRZoMCFESRwMAgFAIHhuFwQDAMhcJBUDgQBMLBMWAsFo6EItFQKBoNxcBYMBwKwqLAYEwEggNBqZAA6HT6gXAsGA7GIpFQLhiMRCG5YCQSiUcigWBAOg8AQXl5CgqJilA9PQoKkJCSEBFLShARADs=" width="16" height="16" alt="error" style="vertical-align: middle; margin-right: 5px;">
       <p id="notificationMessage"></p>
       <div class="modal-buttons">
         <button id="closeNotificationBtn" class="btn-confirm">OK</button>
@@ -95,6 +137,9 @@
 
   <!-- Overlay para os modais -->
   <div id="modalOverlay"></div>
-</body>
 
+  <div class="visitor-counter">
+    <span>Visitantes: 0000153</span>
+  </div>
+</body>
 </html>

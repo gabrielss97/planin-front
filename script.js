@@ -5,6 +5,8 @@ let userName = '';
 let roomIdToJoin = '';
 let connections = [];
 let useCustomServer = true; // Começa tentando usar o servidor customizado
+let connectedUsers = []; // Lista de usuários conectados
+let valuesHidden = true; // Por padrão, valores começam escondidos
 
 // Elementos da UI
 const votesEl = document.getElementById('votes');
@@ -22,6 +24,10 @@ const createBtn = document.getElementById('createBtn');
 const joinBtn = document.getElementById('joinBtn');
 const checkRoomsBtn = document.getElementById('checkRoomsBtn');
 const voteBtns = document.querySelectorAll('.voteBtn');
+const usersList = document.getElementById('usersList');
+const toggleValuesBtn = document.getElementById('toggleValuesBtn');
+const toggleBtnText = document.getElementById('toggleBtnText');
+const resetVotesBtn = document.getElementById('resetVotesBtn');
 
 // Elementos dos modais
 const createNameModal = document.getElementById('createNameModal');
@@ -87,9 +93,13 @@ function resetInterface() {
   roomList.style.display = 'none';
   joinIdInput.value = '';
   votesEl.innerHTML = '';
+  usersList.innerHTML = '';
+  connectedUsers = [];
   userName = '';
   createNameInput.value = '';
   joinNameInput.value = '';
+  valuesHidden = true;
+  toggleBtnText.textContent = 'Mostrar Valores';
 }
 
 function setupCreatorInterface() {
@@ -99,6 +109,9 @@ function setupCreatorInterface() {
   joinRoomSection.style.display = 'none';
   roomList.style.display = 'none';
   createBtn.style.display = 'none';
+  
+  // Adicionar o próprio usuário à lista
+  addUserToList(userName, true);
 }
 
 function setupJoinerInterface() {
@@ -107,13 +120,156 @@ function setupJoinerInterface() {
   createRoomSection.style.display = 'none';
   joinRoomSection.style.display = 'none';
   roomList.style.display = 'none';
+  
+  // Adicionar o próprio usuário à lista
+  addUserToList(userName, true);
 }
 
 function showVote(name, vote) {
-  const voteElement = document.createElement('div');
-  voteElement.className = 'vote';
-  voteElement.textContent = `${name}: ${vote}`;
-  votesEl.appendChild(voteElement);
+  // Verificar se já existe uma votação deste usuário
+  const existingVoteEl = document.querySelector(`.vote[data-user="${name}"]`);
+  
+  if (existingVoteEl) {
+    // Atualiza o voto existente
+    const voteValueEl = existingVoteEl.querySelector('.vote-value');
+    voteValueEl.textContent = vote;
+    
+    // Aplicar efeito de destaque (apenas piscar)
+    existingVoteEl.classList.add('updated');
+    setTimeout(() => {
+      existingVoteEl.classList.remove('updated');
+    }, 1000);
+  } else {
+    // Criar novo elemento de voto
+    const voteElement = document.createElement('div');
+    voteElement.className = 'vote new-vote'; // Adiciona classe para animação de entrada
+    voteElement.setAttribute('data-user', name);
+    
+    if (valuesHidden) {
+      voteElement.classList.add('hidden-value');
+    }
+    
+    const nameElement = document.createElement('span');
+    nameElement.className = 'vote-name';
+    nameElement.textContent = name;
+    
+    const valueElement = document.createElement('span');
+    valueElement.className = 'vote-value';
+    
+    // Formatar o valor para garantir que o tamanho não varie muito
+    // Para valores de apenas um caractere, adicionar espaço para maior consistência visual
+    valueElement.textContent = vote;
+    
+    voteElement.appendChild(nameElement);
+    voteElement.appendChild(valueElement);
+    
+    votesEl.appendChild(voteElement);
+    
+    // Remover a classe new-vote após a animação ser concluída
+    setTimeout(() => {
+      voteElement.classList.remove('new-vote');
+    }, 500); // 500ms é suficiente para uma animação de 300ms
+  }
+}
+
+// Função para adicionar um usuário à lista
+function addUserToList(name, isCurrentUser = false) {
+  // Verificar se o usuário já está na lista
+  if (!connectedUsers.includes(name)) {
+    connectedUsers.push(name);
+    
+    // Atualizar a UI
+    const userItem = document.createElement('div');
+    userItem.className = 'user-item';
+    if (isCurrentUser) {
+      userItem.classList.add('current-user');
+    }
+    
+    const userIcon = document.createElement('img');
+    userIcon.className = 'user-icon';
+    userIcon.src = 'data:image/gif;base64,R0lGODlhEAAQAMQfAP///9PT0+3t7dvb29LS0uPj4/f397y8vNzc3Ozs7MnJyff39729vb+/v/n5+c3NzcrKyvX19efn593d3d7e3uXl5eDg4OHh4d/f3+np6dDQ0PDw8Pv7+/z8/P///yH5BAEAAB8ALAAAAAAQABAAAAVz4CeOZGmeaKqubOu+cCzPdG3feK7vfO//wKBwSCwaj8ikcslsOp/QqHRKrVqv2Kx2y+16v+CweEwum8/otHrNbrvf8Lh8Tq/b7/i8fs/v+/+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2ePyEAOw==';
+    userItem.appendChild(userIcon);
+    
+    const userName = document.createElement('span');
+    userName.textContent = name;
+    userItem.appendChild(userName);
+    
+    usersList.appendChild(userItem);
+  }
+}
+
+// Função para enviar lista de usuários para um novo participante
+function sendUsersList(connection) {
+  const userListData = {
+    type: 'user_list',
+    users: connectedUsers
+  };
+  connection.send(userListData);
+}
+
+// Função para enviar histórico de votos para um novo participante
+function sendVotesHistory(connection) {
+  const votes = votesEl.querySelectorAll('.vote');
+  
+  votes.forEach(vote => {
+    const voteData = {
+      type: 'vote',
+      name: vote.getAttribute('data-user'),
+      vote: vote.querySelector('.vote-value').textContent
+    };
+    connection.send(voteData);
+  });
+
+  // Enviando o estado atual de visibilidade dos valores
+  connection.send({
+    type: 'values_visibility',
+    hidden: valuesHidden
+  });
+}
+
+// Função para alternar a visibilidade dos valores
+function toggleValuesVisibility() {
+  // Inverte o estado atual
+  valuesHidden = !valuesHidden;
+  
+  // Atualiza o texto do botão
+  toggleBtnText.textContent = valuesHidden ? 'Mostrar Valores' : 'Esconder Valores';
+  
+  const voteValues = document.querySelectorAll('.vote-value');
+  
+  // Aplica a animação a todos os elementos
+  voteValues.forEach(voteValue => {
+    // Adiciona a classe de animação
+    voteValue.classList.add('flipping');
+    
+    // No meio da animação (quando a carta está de lado), muda a visibilidade
+    setTimeout(() => {
+      if (valuesHidden) {
+        voteValue.closest('.vote').classList.add('hidden-value');
+      } else {
+        voteValue.closest('.vote').classList.remove('hidden-value');
+      }
+    }, 250); // Metade do tempo da animação (0.5s = 500ms)
+    
+    // Remove a classe de animação após a conclusão
+    setTimeout(() => {
+      voteValue.classList.remove('flipping');
+    }, 500);
+  });
+  
+  // Notificar outros usuários sobre a mudança
+  const visibilityData = {
+    type: 'values_visibility',
+    hidden: valuesHidden
+  };
+  
+  if (conn && conn.open) {
+    conn.send(visibilityData);
+  } else if (connections.length > 0) {
+    connections.forEach(c => {
+      if (c.open) c.send(visibilityData);
+    });
+  }
 }
 
 function updateServerStatus(isOnline, usesFallback = false) {
@@ -181,11 +337,97 @@ function createRoom() {
   peer.on('connection', incoming => {
     connections.push(incoming);
 
+    incoming.on('open', () => {
+      // Enviar a lista atual de usuários para o novo participante
+      sendUsersList(incoming);
+      
+      // Enviar o histórico de votos atual
+      sendVotesHistory(incoming);
+    });
+
     incoming.on('data', data => {
-      showVote(data.name, data.vote);
-      connections.forEach(c => {
-        if (c !== incoming && c.open) c.send(data);
-      });
+      // Processar dados recebidos com base no tipo
+      if (data.type === 'vote') {
+        showVote(data.name, data.vote);
+        // Retransmitir para outros clientes
+        connections.forEach(c => {
+          if (c !== incoming && c.open) c.send(data);
+        });
+      } 
+      else if (data.type === 'user_joined') {
+        // Adicionar o novo usuário à lista
+        addUserToList(data.name);
+        
+        // Notificar outros usuários sobre o novo participante
+        const userJoinedData = {
+          type: 'user_joined',
+          name: data.name
+        };
+        
+        connections.forEach(c => {
+          if (c !== incoming && c.open) c.send(userJoinedData);
+        });
+      }
+      else if (data.type === 'reset_votes') {
+        // Resetar todas as estimativas para zero
+        connectedUsers.forEach(user => {
+          showVote(user, "0");
+        });
+        
+        // Retransmitir para outros clientes
+        connections.forEach(c => {
+          if (c !== incoming && c.open) c.send(data);
+        });
+      }
+      else if (data.type === 'values_visibility') {
+        // Atualizar visibilidade dos valores
+        valuesHidden = data.hidden;
+        
+        // Atualizar o texto do botão
+        toggleBtnText.textContent = valuesHidden ? 'Mostrar Valores' : 'Esconder Valores';
+        
+        const voteValues = document.querySelectorAll('.vote-value');
+        
+        // Aplica a animação a todos os elementos
+        voteValues.forEach(voteValue => {
+          // Adiciona a classe de animação
+          voteValue.classList.add('flipping');
+          
+          // No meio da animação (quando a carta está de lado), muda a visibilidade
+          setTimeout(() => {
+            if (valuesHidden) {
+              voteValue.closest('.vote').classList.add('hidden-value');
+            } else {
+              voteValue.closest('.vote').classList.remove('hidden-value');
+            }
+          }, 250); // Metade do tempo da animação (0.5s = 500ms)
+          
+          // Remove a classe de animação após a conclusão
+          setTimeout(() => {
+            voteValue.classList.remove('flipping');
+          }, 500);
+        });
+        
+        // Retransmitir para outros clientes
+        connections.forEach(c => {
+          if (c !== incoming && c.open) c.send(data);
+        });
+      }
+      else if (typeof data === 'object' && data.name && data.vote) {
+        // Para compatibilidade com versões anteriores
+        showVote(data.name, data.vote);
+        connections.forEach(c => {
+          if (c !== incoming && c.open) c.send(data);
+        });
+      }
+    });
+    
+    incoming.on('close', () => {
+      // Remover a conexão da lista
+      const index = connections.indexOf(incoming);
+      if (index !== -1) {
+        connections.splice(index, 1);
+      }
     });
   });
   
@@ -216,8 +458,67 @@ function joinRoom(roomId) {
       conn.on('open', () => {
         setupJoinerInterface();
         
+        // Notificar que entrou
+        const joinData = {
+          type: 'user_joined',
+          name: userName
+        };
+        conn.send(joinData);
+        
         conn.on('data', data => {
-          showVote(data.name, data.vote);
+          // Processar dados recebidos com base no tipo
+          if (data.type === 'user_list') {
+            // Receber lista de usuários existentes
+            data.users.forEach(user => {
+              addUserToList(user, user === userName);
+            });
+          }
+          else if (data.type === 'user_joined') {
+            // Adicionar novo usuário à lista
+            addUserToList(data.name);
+          }
+          else if (data.type === 'vote') {
+            showVote(data.name, data.vote);
+          }
+          else if (data.type === 'reset_votes') {
+            // Resetar todas as estimativas para zero
+            connectedUsers.forEach(user => {
+              showVote(user, "0");
+            });
+          }
+          else if (data.type === 'values_visibility') {
+            // Atualizar visibilidade dos valores
+            valuesHidden = data.hidden;
+            
+            // Atualizar o texto do botão
+            toggleBtnText.textContent = valuesHidden ? 'Mostrar Valores' : 'Esconder Valores';
+            
+            const voteValues = document.querySelectorAll('.vote-value');
+            
+            // Aplica a animação a todos os elementos
+            voteValues.forEach(voteValue => {
+              // Adiciona a classe de animação
+              voteValue.classList.add('flipping');
+              
+              // No meio da animação (quando a carta está de lado), muda a visibilidade
+              setTimeout(() => {
+                if (valuesHidden) {
+                  voteValue.closest('.vote').classList.add('hidden-value');
+                } else {
+                  voteValue.closest('.vote').classList.remove('hidden-value');
+                }
+              }, 250); // Metade do tempo da animação (0.5s = 500ms)
+              
+              // Remove a classe de animação após a conclusão
+              setTimeout(() => {
+                voteValue.classList.remove('flipping');
+              }, 500);
+            });
+          }
+          else if (typeof data === 'object' && data.name && data.vote) {
+            // Para compatibilidade com versões anteriores
+            showVote(data.name, data.vote);
+          }
         });
       });
       
@@ -362,13 +663,21 @@ joinBtn.onclick = () => {
 // Botão de verificar salas
 checkRoomsBtn.onclick = checkAvailableRooms;
 
+// Botão de toggle para mostrar/esconder valores
+toggleValuesBtn.onclick = toggleValuesVisibility;
+resetVotesBtn.onclick = resetVotes;
+
 // Configurar botões de votação
 voteBtns.forEach(btn => {
   btn.onclick = () => {
     const vote = btn.dataset.value;
     showVote(userName, vote);
     
-    const voteData = { name: userName, vote };
+    const voteData = { 
+      type: 'vote',
+      name: userName, 
+      vote: vote 
+    };
     
     if (conn && conn.open) {
       conn.send(voteData);
@@ -379,6 +688,27 @@ voteBtns.forEach(btn => {
     }
   };
 });
+
+// Função para resetar todas as estimativas para zero
+function resetVotes() {
+  // Para cada usuário conectado, definir voto como "0"
+  connectedUsers.forEach(user => {
+    showVote(user, "0");
+  });
+  
+  // Notificar outros usuários sobre o reset
+  const resetData = {
+    type: 'reset_votes'
+  };
+  
+  if (conn && conn.open) {
+    conn.send(resetData);
+  } else if (connections.length > 0) {
+    connections.forEach(c => {
+      if (c.open) c.send(resetData);
+    });
+  }
+}
 
 // Inicialização
 resetInterface();
