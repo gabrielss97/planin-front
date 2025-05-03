@@ -7,32 +7,31 @@
   <meta name="description" content="Planin 2000 - Uma ferramenta nostálgica de Planning Poker com estilo retrô dos anos 90/2000. Ideal para estimativas ágeis em equipes de desenvolvimento.">
   <meta name="keywords" content="planning poker, scrum, agile, estimativa, ferramenta ágil, estilo retrô, windows 98, estimativa de tarefas">
   <meta name="author" content="Gabriel Salvador">
-  <meta name="robots" content="index, follow">
+  <meta name="robots" content="noindex, nofollow">
   
-  <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://planin-back.onrender.com/">
-  <meta property="og:title" content="Planin 2000 - Planning Poker Retrô">
-  <meta property="og:description" content="Uma ferramenta de Planning Poker com visual nostálgico do Windows 98 e internet dos anos 2000. Perfeita para estimativas em equipes ágeis.">
-  <meta property="og:image" content="https://planin-back.onrender.com/favicon.ico">
-  
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image">
-  <meta property="twitter:url" content="https://planin-back.onrender.com/">
-  <meta property="twitter:title" content="Planin 2000 - Planning Poker Retrô">
-  <meta property="twitter:description" content="Uma ferramenta de Planning Poker com visual nostálgico do Windows 98 e internet dos anos 2000. Perfeita para estimativas em equipes ágeis.">
-  <meta property="twitter:image" content="https://planin-back.onrender.com/favicon.ico">
-  
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://localhost:* https://planin-back.onrender.com https://*.peerjs.com wss://*.peerjs.com ws://127.0.0.1:* ws://localhost:*">
+  <!-- SEM CSP para desenvolvimento -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <meta http-equiv="X-Frame-Options" content="DENY">
-  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
-  <title>Planin 2000</title>
+  <title>Planin 2000 (DESENVOLVIMENTO)</title>
   <link rel="stylesheet" href="styles.css">
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <script src="script.js" defer></script>
   
   <link rel="icon" href="favicon.ico" type="image/x-icon">
+  <style>
+    /* Indicação visual de modo de desenvolvimento */
+    body::before {
+      content: "MODO DESENVOLVIMENTO";
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      background: red;
+      color: white;
+      padding: 5px 10px;
+      font-size: 12px;
+      z-index: 9999;
+      opacity: 0.8;
+    }
+  </style>
 </head>
 
 <body>
@@ -181,4 +180,4 @@
     </div>
   </footer>
 </body>
-</html>
+</html> 

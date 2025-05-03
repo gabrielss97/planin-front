@@ -635,3 +635,33 @@ input[type="text"] {
   width: fit-content;
   margin: 20px auto;
 }
+
+/* Estilos para ícones SVG */
+.svg-icon {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+button img, 
+.user-icon, 
+#statusBar img,
+.notification-modal img {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 5px;
+}
+
+#toggleValuesBtn img,
+#resetVotesBtn img {
+  margin-right: 3px;
+}
+
+/* Estilo para rotação de ícone de carregamento caso o SVG não tenha animação */
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+#statusBar img[src*="loading"] {
+  animation: rotate 1.5s linear infinite;
+}

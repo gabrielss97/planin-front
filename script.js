@@ -56,14 +56,26 @@ const peerOptions = isDev
       path: '/peerjs',
       secure: false,
       debug: 0,
-      key: 'peerjs'
+      key: 'peerjs',
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478' }
+        ]
+      }
     } 
   : {
       host: 'planin-back.onrender.com',
       path: '/peerjs',
       secure: true,
       debug: 0,
-      key: 'peerjs'
+      key: 'peerjs',
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478' }
+        ]
+      }
     };
 
 // Configurações de fallback (usa o servidor cloud do PeerJS)
@@ -127,13 +139,19 @@ function setupJoinerInterface() {
 }
 
 function showVote(name, vote) {
+  // Sanitizar o nome e o voto
+  const sanitizedName = validateUserName(name);
+  const sanitizedVote = typeof vote === 'string' ? 
+    validateUserName(vote) : 
+    String(vote);
+  
   // Verificar se já existe uma votação deste usuário
-  const existingVoteEl = document.querySelector(`.vote[data-user="${name}"]`);
+  const existingVoteEl = document.querySelector(`.vote[data-user="${sanitizedName}"]`);
   
   if (existingVoteEl) {
     // Atualiza o voto existente
     const voteValueEl = existingVoteEl.querySelector('.vote-value');
-    voteValueEl.textContent = vote;
+    voteValueEl.textContent = sanitizedVote;
     
     // Aplicar efeito de destaque (apenas piscar)
     existingVoteEl.classList.add('updated');
@@ -144,7 +162,7 @@ function showVote(name, vote) {
     // Criar novo elemento de voto
     const voteElement = document.createElement('div');
     voteElement.className = 'vote new-vote'; // Adiciona classe para animação de entrada
-    voteElement.setAttribute('data-user', name);
+    voteElement.setAttribute('data-user', sanitizedName);
     
     if (valuesHidden) {
       voteElement.classList.add('hidden-value');
@@ -152,14 +170,13 @@ function showVote(name, vote) {
     
     const nameElement = document.createElement('span');
     nameElement.className = 'vote-name';
-    nameElement.textContent = name;
+    nameElement.textContent = sanitizedName;
     
     const valueElement = document.createElement('span');
     valueElement.className = 'vote-value';
     
     // Formatar o valor para garantir que o tamanho não varie muito
-    // Para valores de apenas um caractere, adicionar espaço para maior consistência visual
-    valueElement.textContent = vote;
+    valueElement.textContent = sanitizedVote;
     
     voteElement.appendChild(nameElement);
     voteElement.appendChild(valueElement);
@@ -175,9 +192,12 @@ function showVote(name, vote) {
 
 // Função para adicionar um usuário à lista
 function addUserToList(name, isCurrentUser = false) {
+  // Sanitizar o nome do usuário antes de adicionar à lista
+  const sanitizedName = validateUserName(name);
+  
   // Verificar se o usuário já está na lista
-  if (!connectedUsers.includes(name)) {
-    connectedUsers.push(name);
+  if (!connectedUsers.includes(sanitizedName)) {
+    connectedUsers.push(sanitizedName);
     
     // Atualizar a UI
     const userItem = document.createElement('div');
@@ -188,11 +208,11 @@ function addUserToList(name, isCurrentUser = false) {
     
     const userIcon = document.createElement('img');
     userIcon.className = 'user-icon';
-    userIcon.src = 'data:image/gif;base64,R0lGODlhEAAQAMQfAP///9PT0+3t7dvb29LS0uPj4/f397y8vNzc3Ozs7MnJyff39729vb+/v/n5+c3NzcrKyvX19efn593d3d7e3uXl5eDg4OHh4d/f3+np6dDQ0PDw8Pv7+/z8/P///yH5BAEAAB8ALAAAAAAQABAAAAVz4CeOZGmeaKqubOu+cCzPdG3feK7vfO//wKBwSCwaj8ikcslsOp/QqHRKrVqv2Kx2y+16v+CweEwum8/otHrNbrvf8Lh8Tq/b7/i8fs/v+/+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2ePyEAOw==';
+    userIcon.src = 'images/user-icon.svg';
     userItem.appendChild(userIcon);
     
     const userName = document.createElement('span');
-    userName.textContent = name;
+    userName.textContent = sanitizedName; // Usar o nome sanitizado
     userItem.appendChild(userName);
     
     usersList.appendChild(userItem);
@@ -631,6 +651,11 @@ function registerVisit() {
   })
   .catch(error => {
     console.error('Erro ao registrar visita:', error);
+    // Modo de desenvolvimento: simular contador
+    if (isDev && visitorCounterEl) {
+      const mockCount = String(Math.floor(Math.random() * 1000)).padStart(7, '0');
+      visitorCounterEl.textContent = `Visitantes: ${mockCount} (DEV)`;
+    }
   });
 }
 
@@ -651,6 +676,11 @@ function fetchVisitorCount() {
     })
     .catch(error => {
       console.error('Erro ao buscar contagem de visitantes:', error);
+      // Modo de desenvolvimento: simular contador
+      if (isDev && visitorCounterEl) {
+        const mockCount = String(Math.floor(Math.random() * 1000)).padStart(7, '0');
+        visitorCounterEl.textContent = `Visitantes: ${mockCount} (DEV)`;
+      }
     });
 }
 
@@ -659,25 +689,63 @@ cancelCreateBtn.addEventListener('click', () => hideModal(createNameModal));
 cancelJoinBtn.addEventListener('click', () => hideModal(joinNameModal));
 closeNotificationBtn.addEventListener('click', () => hideModal(notificationModal));
 
+// Função para validar e sanitizar entradas do usuário
+function validateUserName(name) {
+  if (!name) return '';
+  
+  // Limitar a 30 caracteres
+  let sanitizedName = name.trim().substring(0, 30);
+  
+  // Escapar caracteres especiais para prevenir XSS
+  sanitizedName = sanitizedName
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+    
+  return sanitizedName;
+}
+
 confirmCreateBtn.addEventListener('click', () => {
-  const name = createNameInput.value.trim();
-  if (!name) {
+  const inputName = createNameInput.value.trim();
+  if (!inputName) {
     displayErrorMessage('Por favor, insira seu nome.');
     return;
   }
-  userName = name;
+  
+  // Validar e sanitizar o nome do usuário
+  const sanitizedName = validateUserName(inputName);
+  if (sanitizedName !== inputName) {
+    createNameInput.value = sanitizedName;
+    if (sanitizedName.length < inputName.length) {
+      displayErrorMessage('Seu nome foi ajustado para o limite máximo de 30 caracteres.');
+    }
+  }
+  
+  userName = sanitizedName;
   hideModal(createNameModal);
   createRoom();
   registerVisit(); // Registrar visita quando criar uma sala
 });
 
 confirmJoinBtn.addEventListener('click', () => {
-  const name = joinNameInput.value.trim();
-  if (!name) {
+  const inputName = joinNameInput.value.trim();
+  if (!inputName) {
     displayErrorMessage('Por favor, insira seu nome.');
     return;
   }
-  userName = name;
+  
+  // Validar e sanitizar o nome do usuário
+  const sanitizedName = validateUserName(inputName);
+  if (sanitizedName !== inputName) {
+    joinNameInput.value = sanitizedName;
+    if (sanitizedName.length < inputName.length) {
+      displayErrorMessage('Seu nome foi ajustado para o limite máximo de 30 caracteres.');
+    }
+  }
+  
+  userName = sanitizedName;
   hideModal(joinNameModal);
   joinRoom(roomIdToJoin);
   registerVisit(); // Registrar visita quando entrar em uma sala
