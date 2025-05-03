@@ -28,6 +28,12 @@
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
   <title>Planin 2000</title>
   <link rel="stylesheet" href="styles.css">
+  
+  <!-- Arquivos de tradução -->
+  <script src="translations/pt.js"></script>
+  <script src="translations/en.js"></script>
+  <script src="translations/i18n.js"></script>
+  
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <script src="script.js" defer></script>
   
@@ -36,70 +42,71 @@
 
 <body>
   <div class="old-browser-notice">
-    <marquee scrollamount="5">⚠️ Este site funciona melhor com Internet Explorer 5.5 ou Netscape Navigator 4.7 ⚠️</marquee>
+    <marquee scrollamount="5" data-i18n="oldBrowserNotice">⚠️ Este site funciona melhor com Internet Explorer 5.5 ou Netscape Navigator 4.7 ⚠️</marquee>
   </div>
 
-  <h1>🃏 Planin 2000 🃏</h1>
+  <h1><span class="card-emoji">🃏</span> <span class="title-text">Planin 2000</span> <span class="card-emoji">🃏</span></h1>
+  
+  <div class="language-selector">
+    <button id="pt-btn" class="lang-btn active">PT</button>
+    <button id="en-btn" class="lang-btn">EN</button>
+  </div>
+  
+  <div class="dark-mode-toggle">
+    <button id="dark-mode-toggle" class="dark-mode-btn" title="Dark Mode" data-i18n-title="darkMode">
+      <span class="dark-mode-icon">🌙</span>
+    </button>
+  </div>
 
   <div id="statusBar">
     <img src="images/loading-icon.svg" width="16" height="16" alt="loading">
-    <p id="serverStatus">Verificando servidor...</p>
+    <p id="serverStatus" data-i18n="checkingServer">Verificando servidor...</p>
   </div>
 
   <div id="roomControls">
     <div id="createRoomSection">
-      <div class="window-title">Criar Nova Sala</div>
+      <div class="window-title" data-i18n="createRoomTitle">Criar Nova Sala</div>
       <button id="createBtn">
         <img src="images/create-icon.svg" width="14" height="14" alt="icon">
-        Criar Sala
+        <span data-i18n="createRoom">Criar Sala</span>
       </button>
       <div id="roomIdSection" style="display:none;">
-        <blink>ID da sala:</blink> <span id="roomIdDisplay"></span>
+        <blink data-i18n="roomId">ID da sala:</blink> <span id="roomIdDisplay"></span>
         <button id="copyBtn" title="Copiar ID">📋</button>
       </div>
     </div>
     
     <div id="joinRoomSection">
-      <h3>Entrar em uma sala existente</h3>
-      <input type="text" id="joinId" placeholder="Cole o ID da sala aqui" />
+      <h3 data-i18n="joinRoomTitle">Entrar em uma sala existente</h3>
+      <input type="text" id="joinId" data-i18n="joinRoomPlaceholder" placeholder="Cole o ID da sala aqui" />
       <button id="joinBtn">
         <img src="images/join-icon.svg" width="14" height="14" alt="icon">
-        Entrar
-      </button>
-      <button id="checkRoomsBtn">
-        <img src="images/check-icon.svg" width="14" height="14" alt="icon">
-        Verificar Salas
+        <span data-i18n="join">Entrar</span>
       </button>
     </div>
   </div>
 
-  <div id="roomList" style="display:none;">
-    <div class="window-title">Salas Disponíveis</div>
-    <h3>Salas Online</h3>
-    <ul id="availableRooms"></ul>
-  </div>
-
   <div id="connectionArea" style="display:none;">
-    <div class="window-title">Sala de Votação</div>
+    <div class="window-title" data-i18n="votingRoomTitle">Sala de Votação</div>
     
     <!-- Novo painel para exibir usuários conectados -->
     <div id="usersPanel">
-      <h3>Usuários Conectados</h3>
+      <h3 data-i18n="connectedUsers">Usuários Conectados</h3>
       <div id="usersList"></div>
     </div>
     
     <img src="images/icon-grid.svg" width="16" height="16" alt="grid icon">
-    <p>Vote:</p>
+    <p data-i18n="vote">Vote:</p>
     
     <!-- Botões para mostrar/esconder valores -->
     <div class="vote-controls">
       <button id="toggleValuesBtn" class="control-btn">
         <img src="images/toggle-icon.svg" width="14" height="14" alt="icon">
-        <span id="toggleBtnText">Mostrar</span>
+        <span id="toggleBtnText" data-i18n="show">Mostrar</span>
       </button>
       <button id="resetVotesBtn" class="control-btn">
         <img src="images/reset-icon.svg" width="14" height="14" alt="icon">
-        Limpar
+        <span data-i18n="clear">Limpar</span>
       </button>
     </div>
     
@@ -123,13 +130,13 @@
   <!-- Modal para nome ao criar sala -->
   <div id="createNameModal" class="modal">
     <div class="modal-content">
-      <div class="window-title">Nova Sala</div>
-      <h3>Informe seu nome</h3>
-      <p>Digite seu nome antes de criar a sala:</p>
-      <input type="text" id="createNameInput" placeholder="Seu nome" maxlength="30" />
+      <div class="window-title" data-i18n="newRoom">Nova Sala</div>
+      <h3 data-i18n="enterName">Informe seu nome</h3>
+      <p data-i18n="enterNameBeforeCreate">Digite seu nome antes de criar a sala:</p>
+      <input type="text" id="createNameInput" data-i18n="namePlaceholder" placeholder="Seu nome" maxlength="30" />
       <div class="modal-buttons">
-        <button id="cancelCreateBtn" class="btn-cancel">Cancelar</button>
-        <button id="confirmCreateBtn" class="btn-confirm">Criar Sala</button>
+        <button id="cancelCreateBtn" class="btn-cancel" data-i18n="cancel">Cancelar</button>
+        <button id="confirmCreateBtn" class="btn-confirm" data-i18n="create">Criar Sala</button>
       </div>
     </div>
   </div>
@@ -137,13 +144,13 @@
   <!-- Modal para nome ao entrar na sala -->
   <div id="joinNameModal" class="modal">
     <div class="modal-content">
-      <div class="window-title">Entrar na Sala</div>
-      <h3>Informe seu nome</h3>
-      <p>Digite seu nome antes de entrar na sala:</p>
-      <input type="text" id="joinNameInput" placeholder="Seu nome" maxlength="30" />
+      <div class="window-title" data-i18n="enterRoomTitle">Entrar na Sala</div>
+      <h3 data-i18n="enterName">Informe seu nome</h3>
+      <p data-i18n="enterNameBeforeJoin">Digite seu nome antes de entrar na sala:</p>
+      <input type="text" id="joinNameInput" data-i18n="namePlaceholder" placeholder="Seu nome" maxlength="30" />
       <div class="modal-buttons">
-        <button id="cancelJoinBtn" class="btn-cancel">Cancelar</button>
-        <button id="confirmJoinBtn" class="btn-confirm">Entrar na Sala</button>
+        <button id="cancelJoinBtn" class="btn-cancel" data-i18n="cancel">Cancelar</button>
+        <button id="confirmJoinBtn" class="btn-confirm" data-i18n="join">Entrar</button>
       </div>
     </div>
   </div>
@@ -151,11 +158,11 @@
   <!-- Modal de notificação para erros -->
   <div id="notificationModal" class="modal notification-modal">
     <div class="modal-content">
-      <div class="window-title">Alerta do Sistema</div>
+      <div class="window-title" data-i18n="systemAlert">Alerta do Sistema</div>
       <img src="images/error-icon.svg" width="16" height="16" alt="error" style="vertical-align: middle; margin-right: 5px;">
       <p id="notificationMessage"></p>
       <div class="modal-buttons">
-        <button id="closeNotificationBtn" class="btn-confirm">OK</button>
+        <button id="closeNotificationBtn" class="btn-confirm" data-i18n="ok">OK</button>
       </div>
     </div>
   </div>
@@ -164,17 +171,16 @@
   <div id="modalOverlay"></div>
 
   <div class="visitor-counter">
-    <span>Visitantes: 0000000</span>
+    <span><span data-i18n="visitors">Visitantes</span>: 0000000</span>
   </div>
   
   <!-- Seção de créditos retrô -->
   <footer class="retro-footer">
     <div class="creator-info">
-      <div class="blink">Criado por Gabriel</div>
+      <div class="blink" data-i18n="createdBy">Criado por Gabriel</div>
       
       <div class="donate-section">
-        <small>Ajude o criador
-        </small>
+        <small data-i18n="helpCreator">Ajude o criador</small>
         <img src="donate-qr-code.png" alt="PIX QR Code" width="70">
       </div>
     </div>

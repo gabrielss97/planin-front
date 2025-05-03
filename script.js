@@ -8,13 +8,14 @@ let useCustomServer = true; // Começa tentando usar o servidor customizado
 let connectedUsers = []; // Lista de usuários conectados
 let valuesHidden = true; // Por padrão, valores começam escondidos
 let visitorCounterEl = document.querySelector('.visitor-counter span');
+let darkModeActive = false; // Estado do modo escuro
 
 // Elementos da UI
 const votesEl = document.getElementById('votes');
 const connectionArea = document.getElementById('connectionArea');
 const serverStatus = document.getElementById('serverStatus');
-const roomList = document.getElementById('roomList');
-const availableRooms = document.getElementById('availableRooms');
+
+
 const roomIdSection = document.getElementById('roomIdSection');
 const roomIdDisplay = document.getElementById('roomIdDisplay');
 const copyBtn = document.getElementById('copyBtn');
@@ -23,7 +24,7 @@ const joinRoomSection = document.getElementById('joinRoomSection');
 const joinIdInput = document.getElementById('joinId');
 const createBtn = document.getElementById('createBtn');
 const joinBtn = document.getElementById('joinBtn');
-const checkRoomsBtn = document.getElementById('checkRoomsBtn');
+
 const voteBtns = document.querySelectorAll('.voteBtn');
 const usersList = document.getElementById('usersList');
 const toggleValuesBtn = document.getElementById('toggleValuesBtn');
@@ -43,6 +44,13 @@ const cancelCreateBtn = document.getElementById('cancelCreateBtn');
 const confirmCreateBtn = document.getElementById('confirmCreateBtn');
 const cancelJoinBtn = document.getElementById('cancelJoinBtn');
 const confirmJoinBtn = document.getElementById('confirmJoinBtn');
+
+// Seletores de idioma
+const ptBtn = document.getElementById('pt-btn');
+const enBtn = document.getElementById('en-btn');
+
+// Botão de modo escuro
+const darkModeBtn = document.getElementById('dark-mode-toggle');
 
 // Configuração do ambiente
 const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -103,7 +111,6 @@ function resetInterface() {
   createRoomSection.style.display = 'block';
   createBtn.style.display = 'block';
   joinRoomSection.style.display = 'block';
-  roomList.style.display = 'none';
   joinIdInput.value = '';
   votesEl.innerHTML = '';
   usersList.innerHTML = '';
@@ -120,7 +127,6 @@ function setupCreatorInterface() {
   roomIdSection.style.display = 'block';
   createRoomSection.style.display = 'block';
   joinRoomSection.style.display = 'none';
-  roomList.style.display = 'none';
   createBtn.style.display = 'none';
   
   // Adicionar o próprio usuário à lista
@@ -132,7 +138,6 @@ function setupJoinerInterface() {
   roomIdSection.style.display = 'none';
   createRoomSection.style.display = 'none';
   joinRoomSection.style.display = 'none';
-  roomList.style.display = 'none';
   
   // Adicionar o próprio usuário à lista
   addUserToList(userName, true);
@@ -254,7 +259,7 @@ function toggleValuesVisibility() {
   valuesHidden = !valuesHidden;
   
   // Atualiza o texto do botão
-  toggleBtnText.textContent = valuesHidden ? 'Mostrar Valores' : 'Esconder Valores';
+  toggleBtnText.textContent = valuesHidden ? translate('show') : translate('hide');
   
   const voteValues = document.querySelectorAll('.vote-value');
   
@@ -295,19 +300,20 @@ function toggleValuesVisibility() {
 
 function updateServerStatus(isOnline, usesFallback = false) {
   if (isOnline && !usesFallback) {
-    serverStatus.textContent = 'Servidor online';
+    serverStatus.textContent = translate('serverOnline');
     serverStatus.style.color = 'green';
   } else if (usesFallback) {
-    serverStatus.textContent = 'Usando servidor cloud (fallback)';
+    serverStatus.textContent = translate('usingFallbackServer');
     serverStatus.style.color = 'orange';
   } else {
-    serverStatus.textContent = 'Servidor offline';
+    serverStatus.textContent = translate('serverOffline');
     serverStatus.style.color = 'red';
   }
 }
 
 function displayErrorMessage(message) {
-  showNotification(message);
+  notificationMessage.textContent = message;
+  showModal(notificationModal);
 }
 
 function switchToFallbackServer(callback) {
@@ -327,11 +333,11 @@ function handleConnectionError(err, isCreatingRoom = false) {
   
   // Determinar mensagem de erro
   if (err.type === 'peer-unavailable') {
-    errorMsg = 'Sala não encontrada ou inativa. Verifique o ID e tente novamente.';
+    errorMsg = translate('roomNotFound');
   } else if (err.message.includes('Invalid key')) {
-    errorMsg = 'Erro de configuração: chave inválida. Por favor, recarregue a página e tente novamente.';
+    errorMsg = translate('configError');
   } else if (err.message.includes('Could not connect')) {
-    errorMsg = 'Não foi possível conectar ao servidor. Verifique sua conexão com a internet.';
+    errorMsg = translate('connectionError');
   } else {
     errorMsg = `Erro: ${err.message}`;
   }
@@ -408,7 +414,7 @@ function createRoom() {
           valuesHidden = data.hidden;
           
           // Atualizar o texto do botão
-          toggleBtnText.textContent = valuesHidden ? 'Mostrar' : 'Esconder';
+          toggleBtnText.textContent = valuesHidden ? translate('show') : translate('hide');
           
           const voteValues = document.querySelectorAll('.vote-value');
           
@@ -530,7 +536,7 @@ function joinRoom(roomId) {
             valuesHidden = data.hidden;
             
             // Atualizar o texto do botão
-            toggleBtnText.textContent = valuesHidden ? 'Mostrar Valores' : 'Esconder Valores';
+            toggleBtnText.textContent = valuesHidden ? translate('show') : translate('hide');
             
             const voteValues = document.querySelectorAll('.vote-value');
             
@@ -562,14 +568,14 @@ function joinRoom(roomId) {
       });
       
       conn.on('close', () => {
-        displayErrorMessage('O host encerrou a conexão');
+        displayErrorMessage(translate('hostClosedConnection'));
         resetInterface();
       });
       
       // Definir um timeout para verificar se a conexão foi estabelecida
       setTimeout(() => {
         if (conn && !conn.open && connectionArea.style.display !== 'block') {
-          displayErrorMessage('Não foi possível conectar à sala. Tente novamente.');
+          displayErrorMessage(translate('cannotConnect'));
           resetInterface();
         }
       }, 10000);
@@ -600,43 +606,6 @@ function checkServerStatus() {
     });
 }
 
-function checkAvailableRooms() {
-  if (!useCustomServer) {
-    displayErrorMessage('Verificação de salas não disponível no modo fallback.');
-    return;
-  }
-  
-  fetch(`${SERVER_URL}/peers`)
-    .then(response => {
-      if (response.ok) return response.json();
-      throw new Error('Não foi possível obter a lista de salas');
-    })
-    .then(data => {
-      availableRooms.innerHTML = '';
-      
-      if (data.active && data.active.length > 0) {
-        data.active.forEach(peerId => {
-          const li = document.createElement('li');
-          li.textContent = peerId;
-          li.onclick = () => {
-            joinIdInput.value = peerId;
-          };
-          li.style.cursor = 'pointer';
-          availableRooms.appendChild(li);
-        });
-        roomList.style.display = 'block';
-      } else {
-        const li = document.createElement('li');
-        li.textContent = 'Nenhuma sala disponível no momento';
-        availableRooms.appendChild(li);
-        roomList.style.display = 'block';
-      }
-    })
-    .catch(() => {
-      displayErrorMessage('Erro ao verificar salas disponíveis');
-    });
-}
-
 // Função para buscar o número atual de visitantes
 function fetchVisitorCount() {
   fetch(`${SERVER_URL}/visitor-count`, {
@@ -658,7 +627,7 @@ function fetchVisitorCount() {
       if (data.totalVisits && visitorCounterEl) {
         // Formatar o número com zeros à esquerda para 7 dígitos
         const formattedCount = String(data.totalVisits).padStart(7, '0');
-        visitorCounterEl.textContent = `Visitantes: ${formattedCount}`;
+        visitorCounterEl.innerHTML = `<span data-i18n="visitors">${translate('visitors')}</span>: ${formattedCount}`;
       }
     })
     .catch(error => {
@@ -666,62 +635,18 @@ function fetchVisitorCount() {
       // Modo de desenvolvimento: simular contador
       if (isDev && visitorCounterEl) {
         const mockCount = String(Math.floor(Math.random() * 1000)).padStart(7, '0');
-        visitorCounterEl.textContent = `Visitantes: ${mockCount} (DEV)`;
+        visitorCounterEl.innerHTML = `<span data-i18n="visitors">${translate('visitors')}</span>: ${mockCount} (DEV)`;
       } else {
         // Em produção, mostrar um número fixo para evitar mostrar zeros
-        visitorCounterEl.textContent = `Visitantes: 0000123`;
+        visitorCounterEl.innerHTML = `<span data-i18n="visitors">${translate('visitors')}</span>: 0000123`;
       }
     });
 }
 
 // Função para registrar uma visita quando o usuário se junta a uma sala
 function registerVisit() {
-  // Verificar se já registrou uma visita nesta sessão
-  if (localStorage.getItem('visitRegistered')) {
-    return;
-  }
-  
-  // Fazer uma requisição para o servidor para registrar a visita
-  fetch(`${SERVER_URL}/register-visit`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Origin': window.location.origin
-    },
-    mode: 'cors',
-    credentials: 'same-origin',
-    body: JSON.stringify({ 
-      timestamp: new Date().toISOString(),
-      domain: window.location.hostname
-    })
-  })
-  .then(response => {
-    if (response.ok) return response.json();
-    throw new Error('Não foi possível registrar visita');
-  })
-  .then(data => {
-    // Atualizar o contador de visitantes na UI
-    if (data.totalVisits && visitorCounterEl) {
-      // Formatar o número com zeros à esquerda para 7 dígitos
-      const formattedCount = String(data.totalVisits).padStart(7, '0');
-      visitorCounterEl.textContent = `Visitantes: ${formattedCount}`;
-    }
-    
-    // Marcar que já registrou uma visita nesta sessão
-    localStorage.setItem('visitRegistered', 'true');
-  })
-  .catch(error => {
-    console.error('Erro ao registrar visita:', error);
-    // Modo de desenvolvimento: simular contador
-    if (isDev && visitorCounterEl) {
-      const mockCount = String(Math.floor(Math.random() * 1000)).padStart(7, '0');
-      visitorCounterEl.textContent = `Visitantes: ${mockCount} (DEV)`;
-    } else {
-      // Em produção, atualizar para um número fixo
-      visitorCounterEl.textContent = `Visitantes: 0000123`;
-    }
-  });
+  // Chamar fetchVisitorCount para atualizar o contador de visitantes
+  fetchVisitorCount();
 }
 
 // Event listeners para os modais
@@ -750,7 +675,7 @@ function validateUserName(name) {
 confirmCreateBtn.addEventListener('click', () => {
   const inputName = createNameInput.value.trim();
   if (!inputName) {
-    displayErrorMessage('Por favor, insira seu nome.');
+    displayErrorMessage(translate('pleaseEnterName'));
     return;
   }
   
@@ -759,7 +684,7 @@ confirmCreateBtn.addEventListener('click', () => {
   if (sanitizedName !== inputName) {
     createNameInput.value = sanitizedName;
     if (sanitizedName.length < inputName.length) {
-      displayErrorMessage('Seu nome foi ajustado para o limite máximo de 30 caracteres.');
+      displayErrorMessage(translate('nameTooLong'));
     }
   }
   
@@ -772,7 +697,7 @@ confirmCreateBtn.addEventListener('click', () => {
 confirmJoinBtn.addEventListener('click', () => {
   const inputName = joinNameInput.value.trim();
   if (!inputName) {
-    displayErrorMessage('Por favor, insira seu nome.');
+    displayErrorMessage(translate('pleaseEnterName'));
     return;
   }
   
@@ -781,7 +706,7 @@ confirmJoinBtn.addEventListener('click', () => {
   if (sanitizedName !== inputName) {
     joinNameInput.value = sanitizedName;
     if (sanitizedName.length < inputName.length) {
-      displayErrorMessage('Seu nome foi ajustado para o limite máximo de 30 caracteres.');
+      displayErrorMessage(translate('nameTooLong'));
     }
   }
   
@@ -803,7 +728,7 @@ copyBtn.addEventListener('click', () => {
         }, 2000);
       })
       .catch(() => {
-        displayErrorMessage('Não foi possível copiar o ID. Por favor, selecione e copie manualmente.');
+        displayErrorMessage(translate('cannotCopyId'));
       });
   }
 });
@@ -818,16 +743,13 @@ createBtn.onclick = () => {
 joinBtn.onclick = () => {
   roomIdToJoin = joinIdInput.value.trim();
   if (!roomIdToJoin) {
-    displayErrorMessage('Insira um ID de sala');
+    displayErrorMessage(translate('enterRoomId'));
     return;
   }
   
   joinNameInput.value = userName || '';
   showModal(joinNameModal);
 };
-
-// Botão de verificar salas
-checkRoomsBtn.onclick = checkAvailableRooms;
 
 // Botão de toggle para mostrar/esconder valores
 toggleValuesBtn.onclick = toggleValuesVisibility;
@@ -876,7 +798,91 @@ function resetVotes() {
   }
 }
 
+// Configurar os botões de seleção de idioma
+ptBtn.addEventListener('click', () => {
+  changeLanguage('pt');
+  ptBtn.classList.add('active');
+  enBtn.classList.remove('active');
+});
+
+enBtn.addEventListener('click', () => {
+  changeLanguage('en');
+  enBtn.classList.add('active');
+  ptBtn.classList.remove('active');
+});
+
+// Função para tocar efeito sonoro
+function playSound(soundType) {
+  // Criar um elemento de áudio
+  const audio = new Audio();
+  
+  // Configurar a fonte do áudio com base no tipo
+  if (soundType === 'dark') {
+    // Som para o modo escuro
+    audio.src = "data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaGFuZyBzb3VuZCBlZmZlY3QgZm9yIGRhcmsgbW9kZQBUSVQyAAAAGAAAAFNvdW5kIEVmZmVjdCAtIERhcmsgTW9kZQBUWUVSAAAABQAAADIwMjMAVENPTgAAAAkAAABTb3VuZCBGWABQUklWAAAAOwAAAE1hcmtlcnMAEwAAABIAZQBmAGYAZQBjAHQAXwAwADIAAgED/wIBAf8=";
+  }
+  
+  // Tocar o som
+  audio.volume = 0.5; // Volume moderado
+  audio.play()
+    .catch(e => console.log("Erro ao reproduzir som:", e)); // Silenciar erro se o navegador bloquear
+}
+
+// Função para alternar o modo escuro
+function toggleDarkMode() {
+  darkModeActive = !darkModeActive;
+  document.body.classList.toggle('dark-mode', darkModeActive);
+  darkModeBtn.classList.toggle('active', darkModeActive);
+  localStorage.setItem('darkMode', darkModeActive ? 'true' : 'false');
+  
+  // Tocar efeito sonoro
+  playSound('dark');
+}
+
 // Inicialização
 resetInterface();
 checkServerStatus();
 fetchVisitorCount(); // Buscar a contagem atual de visitantes ao carregar a página
+
+// Inicializar o sistema de tradução e configurar o idioma com base na preferência do usuário
+document.addEventListener('DOMContentLoaded', () => {
+  const savedLanguage = localStorage.getItem('preferredLanguage');
+  
+  if (savedLanguage) {
+    // Atualizar a interface de seleção de idioma
+    if (savedLanguage === 'en') {
+      enBtn.classList.add('active');
+      ptBtn.classList.remove('active');
+    } else {
+      ptBtn.classList.add('active');
+      enBtn.classList.remove('active');
+    }
+    
+    changeLanguage(savedLanguage);
+  } else {
+    // Detectar idioma do navegador
+    const detectedLanguage = getBrowserLanguage();
+    
+    // Atualizar a interface de seleção de idioma
+    if (detectedLanguage === 'en') {
+      enBtn.classList.add('active');
+      ptBtn.classList.remove('active');
+    } else {
+      ptBtn.classList.add('active');
+      enBtn.classList.remove('active');
+    }
+    
+    loadTranslation();
+  }
+  
+  // Configurar o modo escuro com base na preferência salva
+  const savedDarkMode = localStorage.getItem('darkMode');
+  if (savedDarkMode === 'true') {
+    darkModeActive = true;
+    document.body.classList.add('dark-mode');
+    darkModeBtn.classList.add('active');
+  }
+});
+
+// Inicializar o modo escuro
+darkModeBtn.addEventListener('click', toggleDarkMode);
