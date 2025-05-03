@@ -385,7 +385,7 @@ function createRoom() {
         valuesHidden = data.hidden;
         
         // Atualizar o texto do botão
-        toggleBtnText.textContent = valuesHidden ? 'Mostrar Valores' : 'Esconder Valores';
+        toggleBtnText.textContent = valuesHidden ? 'Mostrar' : 'Esconder';
         
         const voteValues = document.querySelectorAll('.vote-value');
         
