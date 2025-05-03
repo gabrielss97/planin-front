@@ -1,27 +1,46 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8">
-  <title>Planning Poker</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; padding: 2rem; }
-    #votes { margin-top: 2rem; }
-    .vote { margin: 0.5rem; display: inline-block; padding: 0.5rem 1rem; border: 1px solid #ccc; border-radius: 8px; }
-  </style>
-  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <title>Planin</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="script.js" defer></script>
 </head>
-<body>
-  <h1>Planning Poker</h1>
 
-  <div>
-    <button id="createBtn">Criar Sala</button>
-    <input type="text" id="joinId" placeholder="ID da sala" />
-    <button id="joinBtn">Entrar</button>
+<body>
+  <h1>Planin</h1>
+
+  <div id="statusBar">
+    <p id="serverStatus">Verificando servidor...</p>
+  </div>
+
+  <div id="roomControls">
+    <div id="createRoomSection">
+      <button id="createBtn">Criar Sala</button>
+      <div id="roomIdSection" style="display:none;">
+        <p>ID da sala: <span id="roomIdDisplay"></span>
+          <button id="copyBtn" title="Copiar ID">📋</button>
+        </p>
+      </div>
+    </div>
+    
+    <div id="joinRoomSection">
+      <h3>Entrar em uma sala</h3>
+      <input type="text" id="joinId" placeholder="Cole o ID da sala aqui" />
+      <button id="joinBtn">Entrar</button>
+      <button id="checkRoomsBtn">Verificar Salas Disponíveis</button>
+    </div>
+  </div>
+
+  <div id="roomList" style="display:none;">
+    <h3>Salas Disponíveis</h3>
+    <ul id="availableRooms"></ul>
   </div>
 
   <div id="connectionArea" style="display:none;">
-    <p>Seu nome: <input type="text" id="name" /></p>
-    <p>Vote: 
+    <p>Vote:
       <button class="voteBtn" data-value="1">1</button>
       <button class="voteBtn" data-value="2">2</button>
       <button class="voteBtn" data-value="3">3</button>
@@ -38,61 +57,44 @@
     <div id="votes"></div>
   </div>
 
-  <script>
-    let peer, conn;
-    const votesEl = document.getElementById('votes');
-    const connectionArea = document.getElementById('connectionArea');
+  <!-- Modal para nome ao criar sala -->
+  <div id="createNameModal" class="modal">
+    <div class="modal-content">
+      <h3>Informe seu nome</h3>
+      <p>Digite seu nome antes de criar a sala:</p>
+      <input type="text" id="createNameInput" placeholder="Seu nome" />
+      <div class="modal-buttons">
+        <button id="cancelCreateBtn" class="btn-cancel">Cancelar</button>
+        <button id="confirmCreateBtn" class="btn-confirm">Criar Sala</button>
+      </div>
+    </div>
+  </div>
 
-    const peerOptions = {
-      host: 'https://planin-back.onrender.com/', 
-      path: '/peerjs',
-      secure: true,
-      port: 443
-    };
+  <!-- Modal para nome ao entrar na sala -->
+  <div id="joinNameModal" class="modal">
+    <div class="modal-content">
+      <h3>Informe seu nome</h3>
+      <p>Digite seu nome antes de entrar na sala:</p>
+      <input type="text" id="joinNameInput" placeholder="Seu nome" />
+      <div class="modal-buttons">
+        <button id="cancelJoinBtn" class="btn-cancel">Cancelar</button>
+        <button id="confirmJoinBtn" class="btn-confirm">Entrar na Sala</button>
+      </div>
+    </div>
+  </div>
 
-    document.getElementById('createBtn').onclick = () => {
-      peer = new Peer(undefined, peerOptions);
-      peer.on('open', id => {
-        alert('ID da sala: ' + id);
-        connectionArea.style.display = 'block';
-      });
+  <!-- Modal de notificação para erros -->
+  <div id="notificationModal" class="modal notification-modal">
+    <div class="modal-content">
+      <p id="notificationMessage"></p>
+      <div class="modal-buttons">
+        <button id="closeNotificationBtn" class="btn-confirm">OK</button>
+      </div>
+    </div>
+  </div>
 
-      peer.on('connection', c => {
-        c.on('data', d => {
-          showVote(d.name, d.vote);
-        });
-      });
-    };
-
-    document.getElementById('joinBtn').onclick = () => {
-      const roomId = document.getElementById('joinId').value.trim();
-      if (!roomId) return alert('Insira um ID de sala');
-      peer = new Peer(undefined, peerOptions);
-      peer.on('open', id => {
-        conn = peer.connect(roomId);
-        conn.on('open', () => {
-          connectionArea.style.display = 'block';
-        });
-      });
-    };
-
-    document.querySelectorAll('.voteBtn').forEach(btn => {
-      btn.onclick = () => {
-        const name = document.getElementById('name').value || 'Anônimo';
-        const vote = btn.dataset.value;
-        showVote(name, vote);
-        if (conn && conn.open) {
-          conn.send({ name, vote });
-        }
-      };
-    });
-
-    function showVote(name, vote) {
-      const p = document.createElement('div');
-      p.className = 'vote';
-      p.textContent = `${name}: ${vote}`;
-      votesEl.appendChild(p);
-    }
-  </script>
+  <!-- Overlay para os modais -->
+  <div id="modalOverlay"></div>
 </body>
+
 </html>
