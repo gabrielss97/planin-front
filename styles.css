@@ -130,6 +130,44 @@ button:active {
   box-shadow: none;
 }
 
+/* Estilo para botão desabilitado com animação de loading */
+button:disabled {
+  background: #aaaaaa;
+  color: #666666;
+  cursor: not-allowed !important;
+  box-shadow: 1px 1px 0 #000;
+  transform: none;
+  opacity: 0.8;
+}
+
+/* Animação de pulso para indicar carregamento */
+@keyframes button-loading {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Classe para botão com animação de loading */
+button.loading {
+  background: linear-gradient(45deg, #aaaaaa, #cccccc, #aaaaaa);
+  background-size: 200% 200%;
+  animation: button-loading 2s ease infinite;
+  position: relative;
+}
+
+button.loading::after {
+  content: "...";
+  position: absolute;
+  right: 8px;
+  animation: ellipsis-animation 1.5s infinite;
+}
+
+@keyframes ellipsis-animation {
+  0% { content: "."; }
+  33% { content: ".."; }
+  66% { content: "..."; }
+}
+
 .voteBtn {
   margin: 4px;
   min-width: 40px;
@@ -589,6 +627,23 @@ input[type="text"] {
   box-shadow: none;
 }
 
+.dark-mode button:disabled {
+  background: #333333;
+  color: #666666;
+  border-color: #444444 #222222 #222222 #444444;
+  cursor: not-allowed !important;
+  opacity: 0.7;
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+.dark-mode button.loading {
+  background: linear-gradient(45deg, #222222, #333333, #222222);
+  background-size: 200% 200%;
+  animation: button-loading 2s ease infinite;
+  border-color: #444444 #222222 #222222 #444444;
+  color: #888888;
+}
+
 .dark-mode #createBtn, 
 .dark-mode #joinBtn {
   background: linear-gradient(to bottom, #003366, #002244);
@@ -851,23 +906,20 @@ input[type="text"] {
 }
 
 .web-badges img {
-  margin: 0 5px;
-  border: 1px solid #444;
+  width: 88px;
+  height: auto;
+  margin: 5px;
 }
 
-/* Contador de visitantes */
-.visitor-counter {
-  display: flex;
-  justify-content: center;
-  margin: 20px 0;
-  font-family: 'Courier New', monospace;
-  font-weight: bold;
-  color: #ffff00;
-  background: #000080;
-  padding: 5px 10px;
-  border: 2px inset #c0c0c0;
-  width: fit-content;
-  margin: 20px auto;
+/* Estilos para o modo escuro */
+.dark-mode .retro-footer {
+  background: #001133;
+  border-color: #333;
+}
+
+.dark-mode .donate-section {
+  background: rgba(0, 33, 66, 0.5);
+  border-color: #333;
 }
 
 /* Estilos para ícones SVG */
@@ -993,12 +1045,6 @@ button img,
 .dark-mode .old-browser-notice {
   background-color: #001122;
   color: #ffff00;
-}
-
-.dark-mode .visitor-counter {
-  background: #001133;
-  color: #00ffcc;
-  border-color: #333;
 }
 
 .dark-mode .retro-footer {

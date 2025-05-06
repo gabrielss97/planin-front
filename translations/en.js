@@ -6,6 +6,7 @@ const en = {
   serverOnline: "Server online! Using custom server.",
   serverOffline: "Server offline! Using cloud server.",
   usingFallbackServer: "Using cloud server (fallback)",
+  creatingRoom: "Creating room...",
   
   // Create room
   createRoomTitle: "Create New Room",
@@ -38,9 +39,6 @@ const en = {
   enterRoomTitle: "Enter Room",
   ok: "OK",
   systemAlert: "System Alert",
-  
-  // Counter
-  visitors: "Visitors",
   
   // Footer
   createdBy: "Created by Gabriel",

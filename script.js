@@ -7,7 +7,6 @@ let connections = [];
 let useCustomServer = true; // Começa tentando usar o servidor customizado
 let connectedUsers = []; // Lista de usuários conectados
 let valuesHidden = true; // Por padrão, valores começam escondidos
-let visitorCounterEl = document.querySelector('.visitor-counter span');
 let darkModeActive = false; // Estado do modo escuro
 
 // Elementos da UI
@@ -120,6 +119,10 @@ function resetInterface() {
   joinNameInput.value = '';
   valuesHidden = true;
   toggleBtnText.textContent = 'Mostrar Valores';
+  
+  // Desabilitar o botão de criar sala até que o servidor seja verificado
+  createBtn.disabled = true;
+  createBtn.classList.add('loading');
 }
 
 function setupCreatorInterface() {
@@ -302,12 +305,21 @@ function updateServerStatus(isOnline, usesFallback = false) {
   if (isOnline && !usesFallback) {
     serverStatus.textContent = translate('serverOnline');
     serverStatus.style.color = 'green';
+    // Habilitar o botão de criar sala quando o servidor estiver online
+    createBtn.disabled = false;
+    createBtn.classList.remove('loading');
   } else if (usesFallback) {
     serverStatus.textContent = translate('usingFallbackServer');
     serverStatus.style.color = 'orange';
+    // Habilitar o botão mesmo no fallback
+    createBtn.disabled = false;
+    createBtn.classList.remove('loading');
   } else {
     serverStatus.textContent = translate('serverOffline');
     serverStatus.style.color = 'red';
+    // Manter o botão desabilitado se o servidor estiver offline
+    createBtn.disabled = true;
+    createBtn.classList.remove('loading');
   }
 }
 
@@ -346,8 +358,13 @@ function handleConnectionError(err, isCreatingRoom = false) {
   resetInterface();
 }
 
-// Funções de salas e conexão
+// Função para criar sala
 function createRoom() {
+  // Mostrar estado de loading no botão
+  createBtn.disabled = true;
+  createBtn.classList.add('loading');
+  createBtn.innerHTML = `<img src="images/loading-icon.svg" width="14" height="14" alt="loading"> <span>${translate('creatingRoom')}</span>`;
+  
   if (peer) {
     peer.destroy();
   }
@@ -362,6 +379,11 @@ function createRoom() {
       currentRoomId = id;
       roomIdDisplay.textContent = id;
       setupCreatorInterface();
+      
+      // Restaurar o botão após sucesso
+      createBtn.disabled = false;
+      createBtn.classList.remove('loading');
+      createBtn.innerHTML = `<img src="images/create-icon.svg" width="14" height="14" alt="icon"> <span data-i18n="createRoom">${translate('createRoom')}</span>`;
     });
 
     peer.on('connection', incoming => {
@@ -463,10 +485,20 @@ function createRoom() {
     
     peer.on('error', err => {
       console.error("Erro de peer:", err.type, err.message);
+      // Restaurar o botão em caso de erro
+      createBtn.disabled = false;
+      createBtn.classList.remove('loading');
+      createBtn.innerHTML = `<img src="images/create-icon.svg" width="14" height="14" alt="icon"> <span data-i18n="createRoom">${translate('createRoom')}</span>`;
+      
       handleConnectionError(err, true);
     });
   } catch (err) {
     console.error("Erro ao criar peer:", err);
+    
+    // Restaurar o botão em caso de erro
+    createBtn.disabled = false;
+    createBtn.classList.remove('loading');
+    createBtn.innerHTML = `<img src="images/create-icon.svg" width="14" height="14" alt="icon"> <span data-i18n="createRoom">${translate('createRoom')}</span>`;
     
     // Tentar fallback automático
     if (useCustomServer) {
@@ -587,7 +619,12 @@ function joinRoom(roomId) {
 }
 
 function checkServerStatus() {
-  serverStatus.textContent = 'Verificando servidor...';
+  serverStatus.textContent = translate('checkingServer');
+  serverStatus.style.color = '#0000ff';
+  
+  // Desabilitar o botão de criar sala e adicionar classe de loading enquanto verifica
+  createBtn.disabled = true;
+  createBtn.classList.add('loading');
   
   fetch(SERVER_URL)
     .then(response => {
@@ -606,51 +643,14 @@ function checkServerStatus() {
     });
 }
 
-// Função para buscar o número atual de visitantes
-function fetchVisitorCount() {
-  fetch(`${SERVER_URL}/visitor-count`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Origin': window.location.origin
-    },
-    mode: 'cors',
-    credentials: 'same-origin'
-  })
-    .then(response => {
-      if (response.ok) return response.json();
-      throw new Error('Não foi possível obter contagem de visitantes');
-    })
-    .then(data => {
-      // Atualizar o contador de visitantes na UI
-      if (data.totalVisits && visitorCounterEl) {
-        // Formatar o número com zeros à esquerda para 7 dígitos
-        const formattedCount = String(data.totalVisits).padStart(7, '0');
-        visitorCounterEl.innerHTML = `<span data-i18n="visitors">${translate('visitors')}</span>: ${formattedCount}`;
-      }
-    })
-    .catch(error => {
-      console.error('Erro ao buscar contagem de visitantes:', error);
-      // Modo de desenvolvimento: simular contador
-      if (isDev && visitorCounterEl) {
-        const mockCount = String(Math.floor(Math.random() * 1000)).padStart(7, '0');
-        visitorCounterEl.innerHTML = `<span data-i18n="visitors">${translate('visitors')}</span>: ${mockCount} (DEV)`;
-      } else {
-        // Em produção, mostrar um número fixo para evitar mostrar zeros
-        visitorCounterEl.innerHTML = `<span data-i18n="visitors">${translate('visitors')}</span>: 0000123`;
-      }
-    });
-}
-
-// Função para registrar uma visita quando o usuário se junta a uma sala
-function registerVisit() {
-  // Chamar fetchVisitorCount para atualizar o contador de visitantes
-  fetchVisitorCount();
-}
-
 // Event listeners para os modais
-cancelCreateBtn.addEventListener('click', () => hideModal(createNameModal));
+cancelCreateBtn.addEventListener('click', () => {
+  hideModal(createNameModal);
+  // Garantir que o botão de criar sala esteja no estado normal
+  createBtn.disabled = false;
+  createBtn.classList.remove('loading');
+  createBtn.innerHTML = `<img src="images/create-icon.svg" width="14" height="14" alt="icon"> <span data-i18n="createRoom">${translate('createRoom')}</span>`;
+});
 cancelJoinBtn.addEventListener('click', () => hideModal(joinNameModal));
 closeNotificationBtn.addEventListener('click', () => hideModal(notificationModal));
 
@@ -691,7 +691,6 @@ confirmCreateBtn.addEventListener('click', () => {
   userName = sanitizedName;
   hideModal(createNameModal);
   createRoom();
-  registerVisit(); // Registrar visita quando criar uma sala
 });
 
 confirmJoinBtn.addEventListener('click', () => {
@@ -713,7 +712,6 @@ confirmJoinBtn.addEventListener('click', () => {
   userName = sanitizedName;
   hideModal(joinNameModal);
   joinRoom(roomIdToJoin);
-  registerVisit(); // Registrar visita quando entrar em uma sala
 });
 
 // Configurar o botão de copiar
@@ -735,6 +733,8 @@ copyBtn.addEventListener('click', () => {
 
 // Botão de criar sala abre o modal
 createBtn.onclick = () => {
+  if (createBtn.disabled) return; // Não fazer nada se o botão estiver desabilitado
+  
   createNameInput.value = userName || '';
   showModal(createNameModal);
 };
@@ -842,7 +842,6 @@ function toggleDarkMode() {
 // Inicialização
 resetInterface();
 checkServerStatus();
-fetchVisitorCount(); // Buscar a contagem atual de visitantes ao carregar a página
 
 // Inicializar o sistema de tradução e configurar o idioma com base na preferência do usuário
 document.addEventListener('DOMContentLoaded', () => {

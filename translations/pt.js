@@ -6,6 +6,7 @@ const pt = {
   serverOnline: "Servidor online! Usando servidor dedicado.",
   serverOffline: "Servidor offline! Usando servidor na nuvem.",
   usingFallbackServer: "Usando servidor cloud (fallback)",
+  creatingRoom: "Criando sala...",
   
   // Criar sala
   createRoomTitle: "Criar Nova Sala",
@@ -38,9 +39,6 @@ const pt = {
   enterRoomTitle: "Entrar na Sala",
   ok: "OK",
   systemAlert: "Alerta do Sistema",
-  
-  // Contador
-  visitors: "Visitantes",
   
   // Rodapé
   createdBy: "Criado por Gabriel",
