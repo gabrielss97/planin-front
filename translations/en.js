@@ -6,6 +6,7 @@ const en = {
   serverOnline: "Server online! Using custom server.",
   serverOffline: "Server offline! Using cloud server.",
   usingFallbackServer: "Using cloud server (fallback)",
+  fallbackServerOnline: "Fallback server online!",
   creatingRoom: "Creating room...",
   
   // Create room
@@ -57,6 +58,18 @@ const en = {
   cannotConnect: "Could not connect to the room. Try again.",
   serverConnectionError: "Server connection error. Switching to cloud server...",
   nameRequired: "Name is required!",
+  
+  // New connection handling texts
+  invalidKey: "Invalid access key. Using alternative server.",
+  networkError: "Network error. Check your internet connection.",
+  webrtcNotSupported: "WebRTC is not supported by this browser.",
+  serverError: "Server error. Trying to reconnect...",
+  connectionClosed: "Connection closed unexpectedly.",
+  errorConnecting: "Error connecting",
+  timeoutError: "Connection timed out. Network may be unstable.",
+  roomCreated: "Room successfully created! ID",
+  lostConnection: "Lost connection to server.",
+  lostConnectionToHost: "Lost connection to room host.",
   
   // Modes
   darkMode: "Dark Mode",

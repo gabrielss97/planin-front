@@ -6,6 +6,7 @@ const pt = {
   serverOnline: "Servidor online! Usando servidor dedicado.",
   serverOffline: "Servidor offline! Usando servidor na nuvem.",
   usingFallbackServer: "Usando servidor cloud (fallback)",
+  fallbackServerOnline: "Servidor alternativo online!",
   creatingRoom: "Criando sala...",
   
   // Criar sala
@@ -58,6 +59,18 @@ const pt = {
   cannotConnect: "Não foi possível conectar à sala. Tente novamente.",
   invalidRoomId: "ID de sala inválido. Verifique e tente novamente.",
   nameRequired: "Nome é obrigatório!",
+  
+  // Novos textos para tratamento de conexão
+  invalidKey: "Chave de acesso inválida. Usando servidor alternativo.",
+  networkError: "Erro de rede. Verifique sua conexão internet.",
+  webrtcNotSupported: "WebRTC não é suportado por este navegador.",
+  serverError: "Erro no servidor. Tentando reconectar...",
+  connectionClosed: "Conexão fechada inesperadamente.",
+  errorConnecting: "Erro ao conectar",
+  timeoutError: "Tempo esgotado ao tentar conectar. A rede pode estar instável.",
+  roomCreated: "Sala criada com sucesso! ID",
+  lostConnection: "Conexão perdida com o servidor.",
+  lostConnectionToHost: "Conexão perdida com o anfitrião da sala.",
   
   // Modos
   darkMode: "Modo Escuro",

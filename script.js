@@ -8,6 +8,9 @@ let useCustomServer = true; // Começa tentando usar o servidor customizado
 let connectedUsers = []; // Lista de usuários conectados
 let valuesHidden = true; // Por padrão, valores começam escondidos
 let darkModeActive = false; // Estado do modo escuro
+let connectionRetryCount = 0; // Contador de tentativas de reconexão
+let connectionRetryMax = 3; // Número máximo de tentativas de reconexão
+let messageQueue = []; // Fila de mensagens para envio garantido
 
 // Elementos da UI
 const votesEl = document.getElementById('votes');
@@ -67,7 +70,9 @@ const peerOptions = isDev
       config: {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:global.stun.twilio.com:3478' }
+          { urls: 'stun:global.stun.twilio.com:3478' },
+          { urls: 'stun:stun.stunprotocol.org:3478' },
+          { urls: 'stun:stun.voiparound.com:3478' }
         ]
       }
     } 
@@ -80,13 +85,26 @@ const peerOptions = isDev
       config: {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:global.stun.twilio.com:3478' }
+          { urls: 'stun:global.stun.twilio.com:3478' },
+          { urls: 'stun:stun.stunprotocol.org:3478' },
+          { urls: 'stun:stun.voiparound.com:3478' }
         ]
       }
     };
 
 // Configurações de fallback (usa o servidor cloud do PeerJS)
-const fallbackOptions = { debug: 0 };
+// Adicionando mais servidores STUN para melhorar a conectividade
+const fallbackOptions = { 
+  debug: 0,
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478' },
+      { urls: 'stun:stun.stunprotocol.org:3478' },
+      { urls: 'stun:stun.voiparound.com:3478' }
+    ]
+  }
+};
 
 // Funções de UI
 function showModal(modal) {
@@ -238,22 +256,34 @@ function sendUsersList(connection) {
 
 // Função para enviar histórico de votos para um novo participante
 function sendVotesHistory(connection) {
-  const votes = votesEl.querySelectorAll('.vote');
+  const votes = document.querySelectorAll('.vote');
   
-  votes.forEach(vote => {
-    const voteData = {
-      type: 'vote',
-      name: vote.getAttribute('data-user'),
-      vote: vote.querySelector('.vote-value').textContent
-    };
-    connection.send(voteData);
-  });
-
-  // Enviando o estado atual de visibilidade dos valores
-  connection.send({
-    type: 'values_visibility',
-    hidden: valuesHidden
-  });
+  // Dividir o envio em pacotes menores para evitar sobrecarga
+  const sendNextBatch = (startIdx, batchSize) => {
+    for (let i = startIdx; i < Math.min(startIdx + batchSize, votes.length); i++) {
+      const vote = votes[i];
+      const name = vote.getAttribute('data-user');
+      const voteValue = vote.querySelector('.vote-value').textContent;
+      
+      safeSend(connection, {
+        type: 'vote',
+        name: name,
+        vote: voteValue
+      });
+    }
+    
+    // Se ainda há mais votos para enviar, agendar o próximo lote
+    if (startIdx + batchSize < votes.length) {
+      setTimeout(() => {
+        sendNextBatch(startIdx + batchSize, batchSize);
+      }, 100); // Atraso entre lotes para evitar congestionamento
+    }
+  };
+  
+  // Iniciar envio com lotes de 5 votos por vez
+  if (votes.length > 0) {
+    sendNextBatch(0, 5);
+  }
 }
 
 // Função para alternar a visibilidade dos valores
@@ -301,25 +331,30 @@ function toggleValuesVisibility() {
   }
 }
 
-function updateServerStatus(isOnline, usesFallback = false) {
-  if (isOnline && !usesFallback) {
-    serverStatus.textContent = translate('serverOnline');
-    serverStatus.style.color = 'green';
-    // Habilitar o botão de criar sala quando o servidor estiver online
-    createBtn.disabled = false;
-    createBtn.classList.remove('loading');
-  } else if (usesFallback) {
-    serverStatus.textContent = translate('usingFallbackServer');
-    serverStatus.style.color = 'orange';
-    // Habilitar o botão mesmo no fallback
-    createBtn.disabled = false;
-    createBtn.classList.remove('loading');
+function updateServerStatus(isOnline, usesFallback = false, latency = null) {
+  if (isOnline) {
+    serverStatus.textContent = usesFallback 
+      ? translate('fallbackServerOnline')
+      : (latency ? `${translate('serverOnline')} (${latency}ms)` : translate('serverOnline'));
+    
+    serverStatus.style.color = usesFallback ? '#FF7F00' : '#008000';
+    
+    // Mostrar aviso de fallback se necessário
+    if (usesFallback) {
+      serverStatus.title = translate('usingFallbackServer');
+    } else {
+      serverStatus.title = '';
+    }
   } else {
     serverStatus.textContent = translate('serverOffline');
-    serverStatus.style.color = 'red';
-    // Manter o botão desabilitado se o servidor estiver offline
-    createBtn.disabled = true;
-    createBtn.classList.remove('loading');
+    serverStatus.style.color = '#FF0000';
+    serverStatus.title = translate('usingFallbackServer');
+    
+    // Adicionar classe pulsante
+    serverStatus.classList.add('offline-pulse');
+    setTimeout(() => {
+      serverStatus.classList.remove('offline-pulse');
+    }, 2000);
   }
 }
 
@@ -335,31 +370,137 @@ function switchToFallbackServer(callback) {
 }
 
 function handleConnectionError(err, isCreatingRoom = false) {
-  let errorMsg;
+  console.error("Connection error:", err.type, err.message);
   
-  // Tentar fallback se necessário
-  if (useCustomServer && (err.message.includes('Invalid key') || err.message.includes('Could not connect'))) {
-    switchToFallbackServer(isCreatingRoom ? createRoom : () => joinRoom(roomIdToJoin));
-    return;
+  // Se for o criador da sala e estamos usando o servidor personalizado
+  // com um erro que indica problema de conexão, tentar o servidor de fallback
+  const connectionErrors = ['peer-unavailable', 'network', 'server-error', 'socket-error', 'socket-closed'];
+  
+  if (useCustomServer && connectionErrors.includes(err.type)) {
+    connectionRetryCount++;
+    
+    if (connectionRetryCount <= connectionRetryMax) {
+      displayErrorMessage(`Tentativa ${connectionRetryCount}/${connectionRetryMax}: Erro de conexão. Reconectando...`);
+      
+      // Adicionar um pequeno atraso antes de tentar novamente
+      setTimeout(() => {
+        // Se ainda não conseguimos com o servidor personalizado, tentar o fallback
+        if (connectionRetryCount >= 2) {
+          useCustomServer = false;
+          displayErrorMessage(`Tentando servidor alternativo...`);
+        }
+        
+        // Tentar novamente a operação
+        if (isCreatingRoom) {
+          createRoom();
+        } else if (roomIdToJoin) {
+          joinRoom(roomIdToJoin);
+        }
+      }, 2000);
+      
+      return;
+    }
   }
   
-  // Determinar mensagem de erro
-  if (err.type === 'peer-unavailable') {
-    errorMsg = translate('roomNotFound');
-  } else if (err.message.includes('Invalid key')) {
-    errorMsg = translate('configError');
-  } else if (err.message.includes('Could not connect')) {
-    errorMsg = translate('connectionError');
-  } else {
-    errorMsg = `Erro: ${err.message}`;
-  }
-  
+  // Se chegamos aqui, falhamos em todas as tentativas ou é outro tipo de erro
+  const errorMsg = getConnectionErrorMessage(err);
   displayErrorMessage(errorMsg);
   resetInterface();
 }
 
+function getConnectionErrorMessage(err) {
+  switch(err.type) {
+    case 'peer-unavailable':
+      return translate('roomNotFound');
+    case 'invalid-id':
+      return translate('invalidRoomId');
+    case 'invalid-key':
+      return translate('invalidKey');
+    case 'network':
+      return translate('networkError');
+    case 'webrtc':
+      return translate('webrtcNotSupported');
+    case 'server-error':
+      return translate('serverError');
+    case 'socket-error':
+      return translate('connectionError');
+    case 'socket-closed':
+      return translate('connectionClosed');
+    default:
+      return `${translate('errorConnecting')}: ${err.type}`;
+  }
+}
+
+// Função para tentar reenviar mensagens com falha
+function processMessageQueue() {
+  if (messageQueue.length === 0 || !conn || !conn.open) return;
+  
+  const message = messageQueue.shift();
+  try {
+    conn.send(message);
+    // Reprocessar a fila após um breve atraso
+    setTimeout(processMessageQueue, 100);
+  } catch (err) {
+    console.error("Erro ao enviar mensagem da fila:", err);
+    // Recolocar na fila para tentar novamente
+    messageQueue.unshift(message);
+    // Tentar novamente após um atraso maior
+    setTimeout(processMessageQueue, 3000);
+  }
+}
+
+// Função segura para enviar mensagens
+function safeSend(connection, data) {
+  try {
+    if (connection && connection.open) {
+      connection.send(data);
+      return true;
+    }
+  } catch (err) {
+    console.warn("Erro ao enviar mensagem, adicionando à fila:", err);
+    // Apenas adicionar à fila se não for uma mensagem de controle
+    if (data.type !== 'ping' && data.type !== 'pong') {
+      messageQueue.push(data);
+      setTimeout(processMessageQueue, 500);
+    }
+    return false;
+  }
+  return false;
+}
+
+// Ping para verificar se a conexão está ativa
+function startConnectionHeartbeat(connection, onDisconnect) {
+  let missedPings = 0;
+  const MAX_MISSED_PINGS = 3;
+  
+  const heartbeatInterval = setInterval(() => {
+    if (!connection || !connection.open) {
+      clearInterval(heartbeatInterval);
+      if (onDisconnect) onDisconnect();
+      return;
+    }
+    
+    try {
+      connection.send({ type: 'ping', timestamp: Date.now() });
+    } catch (err) {
+      missedPings++;
+      console.warn(`Falha ao enviar ping (${missedPings}/${MAX_MISSED_PINGS}):`, err);
+      
+      if (missedPings >= MAX_MISSED_PINGS) {
+        clearInterval(heartbeatInterval);
+        if (onDisconnect) onDisconnect();
+      }
+    }
+  }, 15000); // Verificar a cada 15 segundos
+  
+  return heartbeatInterval;
+}
+
 // Função para criar sala
 function createRoom() {
+  // Reset de contadores antes de iniciar uma nova tentativa
+  connectionRetryCount = 0;
+  
   // Mostrar estado de loading no botão
   createBtn.disabled = true;
   createBtn.classList.add('loading');
@@ -375,15 +516,46 @@ function createRoom() {
     
     peer = new Peer(undefined, currentOptions);
     
+    // Adicionar um timeout para a criação do peer
+    const peerCreationTimeout = setTimeout(() => {
+      if (!peer || !peer.id) {
+        console.error("Timeout na criação do peer");
+        // Se estamos usando o servidor personalizado, tente o fallback
+        if (useCustomServer) {
+          useCustomServer = false;
+          createRoom();
+        } else {
+          displayErrorMessage(translate('timeoutError'));
+          resetInterface();
+        }
+      }
+    }, 15000);
+    
     peer.on('open', id => {
+      clearTimeout(peerCreationTimeout);
       currentRoomId = id;
+      console.log(`Sala criada com ID: ${id}`);
       roomIdDisplay.textContent = id;
       setupCreatorInterface();
       
-      // Restaurar o botão após sucesso
+      // Configurar keep-alive para a conexão
+      startConnectionHeartbeat(peer, () => {
+        displayErrorMessage(translate('lostConnection'));
+        resetInterface();
+      });
+      
+      // Atualizar botão
       createBtn.disabled = false;
       createBtn.classList.remove('loading');
-      createBtn.innerHTML = `<img src="images/create-icon.svg" width="14" height="14" alt="icon"> <span data-i18n="createRoom">${translate('createRoom')}</span>`;
+      
+      // Exibir o ID da sala
+      document.getElementById('roomIdDisplay').textContent = id;
+      showNotification(`${translate('roomCreated')}: ${id}`);
+      
+      // Mostrar e habilitar botão de copiar
+      copyBtn.style.display = 'inline-block';
+      
+      playSound('success');
     });
 
     peer.on('connection', incoming => {
@@ -393,17 +565,26 @@ function createRoom() {
         // Enviar a lista atual de usuários para o novo participante
         sendUsersList(incoming);
         
-        // Enviar o histórico de votos atual
+        // Enviar o histórico de votos para o novo participante
         sendVotesHistory(incoming);
       });
 
       incoming.on('data', data => {
         // Processar dados recebidos com base no tipo
+        if (data.type === 'ping') {
+          // Responder com pong para manter a conexão ativa
+          safeSend(incoming, { type: 'pong', timestamp: data.timestamp });
+          return;
+        } else if (data.type === 'pong') {
+          // Ignorar respostas pong
+          return;
+        }
+        
         if (data.type === 'vote') {
           showVote(data.name, data.vote);
           // Retransmitir para outros clientes
           connections.forEach(c => {
-            if (c !== incoming && c.open) c.send(data);
+            if (c !== incoming && c.open) safeSend(c, data);
           });
         } 
         else if (data.type === 'user_joined') {
@@ -417,7 +598,7 @@ function createRoom() {
           };
           
           connections.forEach(c => {
-            if (c !== incoming && c.open) c.send(userJoinedData);
+            if (c !== incoming && c.open) safeSend(c, userJoinedData);
           });
         }
         else if (data.type === 'reset_votes') {
@@ -426,7 +607,7 @@ function createRoom() {
           
           // Retransmitir para outros clientes
           connections.forEach(c => {
-            if (c !== incoming && c.open) c.send(data);
+            if (c !== incoming && c.open) safeSend(c, data);
           });
         }
         else if (data.type === 'values_visibility') {
@@ -460,14 +641,14 @@ function createRoom() {
           
           // Retransmitir para outros clientes
           connections.forEach(c => {
-            if (c !== incoming && c.open) c.send(data);
+            if (c !== incoming && c.open) safeSend(c, data);
           });
         }
         else if (typeof data === 'object' && data.name && data.vote) {
           // Para compatibilidade com versões anteriores
           showVote(data.name, data.vote);
           connections.forEach(c => {
-            if (c !== incoming && c.open) c.send(data);
+            if (c !== incoming && c.open) safeSend(c, data);
           });
         }
       });
@@ -512,6 +693,10 @@ function createRoom() {
 function joinRoom(roomId) {
   if (!roomId) return;
   
+  // Reset contador de tentativas
+  connectionRetryCount = 0;
+  roomIdToJoin = roomId;
+  
   if (peer) {
     peer.destroy();
   }
@@ -519,29 +704,79 @@ function joinRoom(roomId) {
   const currentOptions = useCustomServer ? peerOptions : fallbackOptions;
   peer = new Peer(undefined, currentOptions);
   
+  // Timeout para criação do peer
+  const peerCreationTimeout = setTimeout(() => {
+    if (!peer || !peer.id) {
+      console.error("Timeout na criação do peer");
+      if (useCustomServer) {
+        useCustomServer = false;
+        joinRoom(roomId);
+      } else {
+        displayErrorMessage(translate('timeoutError'));
+        resetInterface();
+      }
+    }
+  }, 15000);
+  
   peer.on('error', err => handleConnectionError(err, false));
   
   peer.on('open', () => {
+    clearTimeout(peerCreationTimeout);
+    
     try {
-      conn = peer.connect(roomId, { reliable: true });
+      conn = peer.connect(roomId, { 
+        reliable: true,
+        serialization: 'json',
+        metadata: { name: userName }
+      });
+      
+      // Timeout para abertura da conexão
+      const connectionTimeout = setTimeout(() => {
+        if (!conn || !conn.open) {
+          console.error("Timeout na abertura da conexão");
+          if (useCustomServer) {
+            useCustomServer = false;
+            joinRoom(roomId);
+          } else {
+            displayErrorMessage(translate('cannotConnect'));
+            resetInterface();
+          }
+        }
+      }, 15000);
       
       conn.on('error', err => {
+        clearTimeout(connectionTimeout);
         displayErrorMessage(`Erro na conexão: ${err.message}`);
         resetInterface();
       });
 
       conn.on('open', () => {
+        clearTimeout(connectionTimeout);
         setupJoinerInterface();
         
+        // Configurar heartbeat para verificar se a conexão está ativa
+        startConnectionHeartbeat(conn, () => {
+          displayErrorMessage(translate('lostConnectionToHost'));
+          resetInterface();
+        });
+        
         // Notificar que entrou
-        const joinData = {
+        safeSend(conn, {
           type: 'user_joined',
           name: userName
-        };
-        conn.send(joinData);
+        });
         
         conn.on('data', data => {
           // Processar dados recebidos com base no tipo
+          if (data.type === 'ping') {
+            // Responder com pong para manter a conexão ativa
+            safeSend(conn, { type: 'pong', timestamp: data.timestamp });
+            return;
+          } else if (data.type === 'pong') {
+            // Ignorar respostas pong
+            return;
+          }
+          
           if (data.type === 'user_list') {
             // Receber lista de usuários existentes
             data.users.forEach(user => {
@@ -614,6 +849,35 @@ function joinRoom(roomId) {
   });
 }
 
+// Verificação proativa de conectividade com o servidor
+function checkServerConnectivity() {
+  return new Promise((resolve, reject) => {
+    const startTime = Date.now();
+    
+    // Função para melhorar o diagnóstico de conectividade
+    fetch(`${SERVER_URL}/status`)
+      .then(response => {
+        if (response.ok) {
+          const latency = Date.now() - startTime;
+          return response.json().then(data => {
+            console.log(`Servidor online. Latência: ${latency}ms, Conexões ativas: ${data.connections || 'N/A'}`);
+            updateServerStatus(true, false, latency);
+            useCustomServer = true;
+            resolve(true);
+          });
+        } else {
+          throw new Error('Servidor não está respondendo corretamente');
+        }
+      })
+      .catch(err => {
+        console.warn("Erro ao verificar servidor:", err);
+        updateServerStatus(false, true);
+        useCustomServer = false;
+        resolve(false);
+      });
+  });
+}
+
 function checkServerStatus() {
   serverStatus.textContent = translate('checkingServer');
   serverStatus.style.color = '#0000ff';
@@ -622,20 +886,15 @@ function checkServerStatus() {
   createBtn.disabled = true;
   createBtn.classList.add('loading');
   
-  fetch(SERVER_URL)
-    .then(response => {
-      if (response.ok) {
-        updateServerStatus(true);
-        useCustomServer = true;
-        return true;
-      } else {
-        throw new Error('Servidor não está respondendo corretamente');
-      }
-    })
-    .catch(() => {
-      updateServerStatus(false, true);
-      useCustomServer = false;
-      return false;
+  // Usar a nova função para verificar conectividade
+  checkServerConnectivity()
+    .finally(() => {
+      // Habilitar o botão novamente, independente do resultado
+      setTimeout(() => {
+        createBtn.disabled = false;
+        createBtn.classList.remove('loading');
+        createBtn.innerHTML = `<img src="images/create-icon.svg" width="14" height="14" alt="icon"> <span data-i18n="createRoom">${translate('createRoom')}</span>`;
+      }, 1000);
     });
 }
 
