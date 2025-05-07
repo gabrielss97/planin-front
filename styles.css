@@ -273,8 +273,6 @@ input[type="text"] {
 
 #votes {
   margin-top: 20px;
-  max-height: 300px;
-  overflow-y: auto;
   background: #fff;
   border: 2px inset #999;
   padding: 10px;

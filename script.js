@@ -421,10 +421,8 @@ function createRoom() {
           });
         }
         else if (data.type === 'reset_votes') {
-          // Resetar todas as estimativas para zero
-          connectedUsers.forEach(user => {
-            showVote(user, "0");
-          });
+          // Limpar todos os votos do container
+          votesEl.innerHTML = '';
           
           // Retransmitir para outros clientes
           connections.forEach(c => {
@@ -558,10 +556,8 @@ function joinRoom(roomId) {
             showVote(data.name, data.vote);
           }
           else if (data.type === 'reset_votes') {
-            // Resetar todas as estimativas para zero
-            connectedUsers.forEach(user => {
-              showVote(user, "0");
-            });
+            // Limpar todos os votos do container
+            votesEl.innerHTML = '';
           }
           else if (data.type === 'values_visibility') {
             // Atualizar visibilidade dos valores
@@ -779,10 +775,8 @@ voteBtns.forEach(btn => {
 
 // Função para resetar todas as estimativas para zero
 function resetVotes() {
-  // Para cada usuário conectado, definir voto como "0"
-  connectedUsers.forEach(user => {
-    showVote(user, "0");
-  });
+  // Limpar todos os votos do container
+  votesEl.innerHTML = '';
   
   // Notificar outros usuários sobre o reset
   const resetData = {
